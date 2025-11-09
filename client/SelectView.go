@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/charmbracelet/bubbles/key"
 	_ "github.com/charmbracelet/bubbles/key"
@@ -10,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
 
 type selectModel struct{
 	optFunc func(FeedieConfig)[]list_source
@@ -28,6 +30,8 @@ func (m selectModel) getSelectedSource() list_source{
 	return list_source{}
 }
 
+var preloadMu sync.Mutex
+var preloadMap map[string][]list_entry
 func initialSelectModel( f func(FeedieConfig)[]list_source, c FeedieConfig) selectModel {
 	
 	m := selectModel{
@@ -50,9 +54,47 @@ func initialSelectModel( f func(FeedieConfig)[]list_source, c FeedieConfig) sele
 	}
 	
 	m.list.SetItems(sources)
-
+	preloadMap = make(map[string][]list_entry)
+	m.preloadFeeds(PRELOAD_AMT)
 
 	return m
+}
+
+func (m selectModel) preloadFeeds(preload int){
+	items := m.list.Items()
+	si := m.list.Index()
+	ei := min(si+preload, len(items)-1)
+	srcs := []list_source{}
+	for _, it := range items[si:ei]{
+		it := it.(list_source)
+		srcs = append(srcs, it)
+	}
+
+	for _, src := range srcs{
+		preloadMu.Lock()
+		_, ok := preloadMap[src.Url]
+		preloadMu.Unlock()
+		if !ok{
+
+			go func(s list_source){
+				LEs := s.SrcFunc(m.config)
+				preloadMu.Lock()
+				preloadMap[s.Url] = LEs
+				preloadMu.Unlock()
+			}(src)
+		}
+	}
+
+}
+
+func (m selectModel) getPreloaded(url string)[]list_entry{
+	preloadMu.Lock()
+	v, ok := preloadMap[url]
+	preloadMu.Unlock()
+	if ok{
+		return v
+	}
+	return []list_entry{}
 }
 
 func (m selectModel) Init() tea.Cmd {
@@ -86,7 +128,10 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		k := msg.String()
 		if in(k,m.config.Keys["open"]){
-			return initialEntriesModel(m.getSelectedSource().SrcFunc, m.config, m), tea.WindowSize()
+			cur := m.getSelectedSource()
+			return initialEntriesModel(cur.SrcFunc, m.config, m,
+			m.getPreloaded(cur.Url)), 
+			tea.WindowSize()
 		}
 		if in(k,m.config.Keys["addFeed"]){
 			if m.list.FilterState() != list.Filtering{
@@ -123,7 +168,13 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+		if in(k,m.config.Keys["refesh"]){
+			if m.list.FilterState() != list.Filtering{
+				return m, RefreshCmd("")
+			}
+		}
 	}
+	m.preloadFeeds(PRELOAD_AMT)
 	nl, c := m.list.Update(msg)
 	m.list = nl
 	return m, c
@@ -142,11 +193,16 @@ func (m *selectModel) Refresh (msg RefreshMsg) tea.Cmd{
 
 	m.list.Select(index)
 	setc := m.list.SetItems(sources)
+	preloadMu.Lock()
+	for k := range preloadMap {
+		delete(preloadMap, k)
+	}
+	preloadMu.Unlock()
 	return tea.Batch(setc, tea.WindowSize()) 
 
 }
 func getSelectKeys(fc FeedieConfig) func() []key.Binding{
-	selectCommands := []string{"addFeed", "addTag", "delete", "modTag"}	
+	selectCommands := []string{"addFeed", "addTag", "delete", "modTag", "refesh"}	
 	ret := []key.Binding{}
 
 	for command, keys := range fc.Keys{
