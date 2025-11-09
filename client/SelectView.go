@@ -61,8 +61,14 @@ func initialSelectModel( f func(FeedieConfig)[]list_source, c FeedieConfig) sele
 }
 
 func (m selectModel) preloadFeeds(preload int){
-	items := m.list.Items()
-	si := m.list.Index()
+	var items []list.Item
+	if m.list.FilterState() == list.FilterApplied{
+		items = m.list.VisibleItems()
+
+	}else{
+		items = m.list.Items()
+	}
+	si := max(0,m.list.Index() - preload/2)
 	ei := min(si+preload, len(items)-1)
 	srcs := []list_source{}
 	for _, it := range items[si:ei]{
@@ -168,7 +174,7 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-		if in(k,m.config.Keys["refesh"]){
+		if in(k,m.config.Keys["refresh"]){
 			if m.list.FilterState() != list.Filtering{
 				return m, RefreshCmd("")
 			}
@@ -183,6 +189,11 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *selectModel) Refresh (msg RefreshMsg) tea.Cmd{
 	var sources []list.Item
 	index := m.list.Index()
+	prevFilter := ""
+	if m.list.IsFiltered(){
+		m.list.SetFilterState(list.Unfiltered)
+		prevFilter = m.list.FilterValue()
+	}
 	for i, src := range m.optFunc(m.config){
 		if src.Title_field == msg.itemName{
 			index = i
@@ -191,8 +202,9 @@ func (m *selectModel) Refresh (msg RefreshMsg) tea.Cmd{
 	}
 
 
-	m.list.Select(index)
 	setc := m.list.SetItems(sources)
+	if prevFilter != "" {m.list.SetFilterText(prevFilter)}
+	m.list.Select(index)
 	preloadMu.Lock()
 	for k := range preloadMap {
 		delete(preloadMap, k)
