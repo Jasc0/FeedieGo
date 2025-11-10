@@ -8,7 +8,7 @@ import (
 )
 
 const DEFAULT_PORT = 2550
-const DEFAULT_REFRESH = 900
+const DEFAULT_REFRESH = 9000 // ~2.5 hrs
 
 
 type FeedieServer struct{
