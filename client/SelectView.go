@@ -64,12 +64,12 @@ func (m selectModel) preloadFeeds(preload int){
 	var items []list.Item
 	if m.list.FilterState() == list.FilterApplied{
 		items = m.list.VisibleItems()
-
 	}else{
 		items = m.list.Items()
 	}
+
 	si := max(0,m.list.Index() - preload/2)
-	ei := min(si+preload, len(items)-1)
+	ei := min(si+preload, len(items))
 	srcs := []list_source{}
 	for _, it := range items[si:ei]{
 		it := it.(list_source)
@@ -80,8 +80,10 @@ func (m selectModel) preloadFeeds(preload int){
 		preloadMu.Lock()
 		_, ok := preloadMap[src.Url]
 		preloadMu.Unlock()
+		if ok{
+			continue
+		}
 		if !ok{
-
 			go func(s list_source){
 				LEs := s.SrcFunc(m.config)
 				preloadMu.Lock()

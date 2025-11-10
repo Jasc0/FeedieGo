@@ -231,6 +231,9 @@ func getSelectOptions(config FeedieConfig) []list_source {
 	for _, p := range peice{
 		p.SrcType = Tag
 		p.SrcFunc = getSrcFunc(p.SrcType, p.Title_field)
+		//used for prefetching key
+		p.Url = fmt.Sprintf("%s%s/get_entries?method=by_tag&value=%s",
+		config.SERVER, config.PORT, p.Title_field)
 		ret = append(ret, p)
 	}
 	resp.Body.Close()
