@@ -115,12 +115,12 @@ func (d FeedieSelectDelegate) Render(w io.Writer, m list.Model, index int, listI
 
 		if index == m.Index() {
 			bar = "┃" // custom indicator
-			title = d.Styles.SelectedTitle.MaxWidth(m.Width()-2).Render(title)
+			title = d.Styles.SelectedTitle.MaxWidth(m.Width()/2-2).Render(title)
 			bar = d.Styles.SelectedTitle.Foreground(lipgloss.Color(d.config.SelectCursor)).Render(bar)
 			desc = d.Styles.SelectedDesc.Render(desc)
 		}else{
 			bar = " " // custom indicator
-			title = d.Styles.NormalTitle.MaxWidth(m.Width() - 2).Render(title)
+			title = d.Styles.NormalTitle.MaxWidth(m.Width()/2 - 2).Render(title)
 			bar = d.Styles.NormalTitle.Foreground(lipgloss.Color(d.config.SelectCursor)).Render(bar)
 			desc = d.Styles.NormalDesc.Render(desc)
 		}
