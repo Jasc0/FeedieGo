@@ -102,6 +102,8 @@ func initialListPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) 
 	m.list.KeyMap = kb
 	m.list.SetFilteringEnabled(true)
 	m.list.SetShowTitle(false)
+	m.list.SetShowHelp(false)
+	m.list.Help.ShowAll = true
 	
 	var popUpLIs []popUpListItem
 	if len(values) == 1{
@@ -126,7 +128,8 @@ func (m popUpModel) View() string {
 	var base string
 	switch(m.display){
 	case text_t:
-		base = m.textinput.View()	
+		base = m.config.getFocusedStyle(). 
+		Width(m.width/2).MaxHeight(3).Render(m.textinput.View())
 	case confirm_t:
 		if m.confirm{
 			base = lipgloss.JoinHorizontal(lipgloss.Center,
@@ -140,13 +143,15 @@ func (m popUpModel) View() string {
 			m.config.getNormalStyle().Render("Confirm"))
 		}
 	case list_t:
-		base = m.list.View()
+		base = lipgloss.NewStyle(). 
+		Width(m.width/2).MaxHeight(m.height/2).Render(m.list.View())
 	}
 	base =  "\n" + base
 	return lipgloss.Place(m.width,m.height,
 		lipgloss.Center,lipgloss.Center,
 		lipgloss.JoinVertical(lipgloss.Center,
-		m.config.getNormalStyle().Padding(5).Render(lipgloss.JoinVertical(lipgloss.Center,m.prompt, base)),
+		m.config.getNormalStyle().MaxHeight(m.height/2+m.height/4).Render(
+			lipgloss.JoinVertical(lipgloss.Center,m.prompt, base)),
 	   lipgloss.NewStyle().Faint(true).Render("Press Escape to exit/cancel")))
 }
 
@@ -159,7 +164,7 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.WindowSizeMsg:
 			m.width = msg.Width
 			m.height= msg.Height
-			m.textinput.Width= m.width /2
+			m.textinput.Width= m.width 
 		case tea.KeyMsg:
 			switch(msg.Type){
 			case tea.KeyEnter:
@@ -210,15 +215,16 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.WindowSizeMsg:
 			m.width = msg.Width
 			m.height= msg.Height
-			m.list.SetSize(m.width-10-2, m.height/2)
+			m.list.SetSize(m.width, m.height/2)
 		case tea.KeyMsg:
 			if m.list.FilterState() == list.Filtering{
 				nl, c := m.list.Update(msg)
 				m.list = nl
 				return m, c
 			}
-			switch msg.Type{
-			case tea.KeyEnter:
+			k := msg.String()
+
+			if in(k, m.config.Keys["open"]){
 				if m.listMultiSelect == true{
 					for _, item := range m.list.Items(){
 						v, ok := item.(popUpListItem)
@@ -241,26 +247,34 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.action(m.config,m.values)
 				return m.prevModel, RefreshCmd("")
-
-			case tea.KeySpace:
-				idx := m.list.Index()
-				if idx >= 0 {
-					if it, ok := m.list.Items()[idx].(popUpListItem); ok {
-						it.pu_selected = !it.pu_selected        
-						m.list.SetItem(idx, it)           
-					}
-				}
-			case tea.KeyEsc:
-				return m.prevModel, tea.WindowSize()
-
-			default:
-				if in(msg.String(), m.config.Keys["quit"]){
-					return m.prevModel, tea.WindowSize()
-				}
-				nl, c := m.list.Update(msg)
-				m.list = nl
-				return m, c
 			}
+			if in(k, m.config.Keys["select"]){
+				selected := m.list.SelectedItem()
+				sel, ok := selected.(popUpListItem)
+				if ok{ 
+					sel.pu_selected = !sel.pu_selected
+					m.list.SetItem(m.list.Index(), sel)
+				}
+				return m, nil
+			}
+
+			if in(k, m.config.Keys["quit"] ) || k == tea.KeyEsc.String(){
+				return m.prevModel, tea.WindowSize()
+			}
+
+			if in(k,m.config.Keys["help"]){
+				if m.list.ShowHelp(){
+					m.list.SetShowHelp(false)
+				} else{
+					m.list.SetShowHelp(true)
+				}
+				return m,nil
+			}
+
+			// key handled by m.list
+			nl, c := m.list.Update(msg)
+			m.list = nl
+			return m, c
 
 		default:
 			nl, c := m.list.Update(msg)

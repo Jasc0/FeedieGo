@@ -253,6 +253,8 @@ func parseConfigFile(path string) FeedieConfig{
 			 "feedMenu":{"m"},
 			 "openMenu":{"o"}, 
 			 "refresh":{"r"},
+			 "help":{"?"},
+			 "select":{" "},
 		 },
 	 }
 	 return fc

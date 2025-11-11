@@ -76,6 +76,8 @@ func initialSelectModel( f func(FeedieConfig)[]list_source, c FeedieConfig) sele
 	m.list.KeyMap = kb
 	m.list.SetShowTitle(false)
 	m.list.AdditionalFullHelpKeys = getSelectKeys(c)
+	m.list.Help.ShowAll = true
+	m.list.SetShowHelp(false)
 
 	var sources []list.Item
 	for _, src := range m.optFunc(m.config){
@@ -108,7 +110,7 @@ func (m selectModel) preloadFeeds(preload int){
 	for _, src := range srcs{
 		preloadMu.Lock()
 		_, ok := preloadMap[src.Url]
-		preloadMu.Unlock()
+	preloadMu.Unlock()
 		if ok{
 			continue
 		}
@@ -147,7 +149,10 @@ func (m selectModel) View() string {
 	return lipgloss.Place(m.width,m.height,
 	lipgloss.Center,
 	lipgloss.Center,
-	m.config.getFocusedStyle().Render(m.list.View()))
+	m.config.getFocusedStyle().
+	Width(m.width/2).
+	Height(m.height-2).
+	Render(m.list.View()))
 	
 }
 func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -212,6 +217,14 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if in(k,m.config.Keys["refresh"]){
 			return m, RefreshCmd("")
+		}
+		if in(k,m.config.Keys["help"]){
+			if m.list.ShowHelp(){
+				m.list.SetShowHelp(false)
+			} else{
+				m.list.SetShowHelp(true)
+			}
+			return m,nil
 		}
 		if in(k,m.config.Keys["filter"]){
 			nl, c := m.list.Update(msg)

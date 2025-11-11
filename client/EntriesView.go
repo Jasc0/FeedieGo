@@ -69,7 +69,9 @@ func initialEntriesModel( f func(FeedieConfig)[]list_entry, c FeedieConfig, prev
 
 	m.vp.MouseWheelEnabled = true
 	m.list.SetShowTitle(false)
+	m.list.SetShowHelp(false)
 	m.list.Help.Ellipsis=""
+	m.list.Help.ShowAll = true
 	kb := list.KeyMap{
 		CursorUp:  key.NewBinding(key.WithKeys(c.Keys["cursorUp"]...),
 		key.WithHelp(strings.Join(c.Keys["cursorUp"],"\\"), "Up")),
@@ -302,6 +304,14 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.list.FilterState() != list.Filtering{
 				return m, RefreshCmd("")
 			}
+		}
+		if in(k,m.config.Keys["help"]){
+			if m.list.ShowHelp(){
+				m.list.SetShowHelp(false)
+			} else{
+				m.list.SetShowHelp(true)
+			}
+			return m,nil
 		}
 		if m.focusL{
 			nl, c := m.list.Update(msg)
