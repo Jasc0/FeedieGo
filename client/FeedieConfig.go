@@ -221,7 +221,7 @@ func parseConfigFile(path string) FeedieConfig{
 		 FocusBorderC: "#00ff00",
 		 NormalBG: "#000000",
 		 NormalFG: "#f9e0a1",
-		 NormalBorderC: "##326416",
+		 NormalBorderC: "#326416",
 		 SelectBG: "#000000",
 		 SelectFG: "#f9e0a1",
 		 SelectCursor: "#00ff00",
