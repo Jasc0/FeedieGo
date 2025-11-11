@@ -69,6 +69,36 @@ func initialEntriesModel( f func(FeedieConfig)[]list_entry, c FeedieConfig, prev
 
 	m.vp.MouseWheelEnabled = true
 	m.list.SetShowTitle(false)
+	m.list.Help.Ellipsis=""
+	kb := list.KeyMap{
+		CursorUp:  key.NewBinding(key.WithKeys(c.Keys["cursorUp"]...),
+		key.WithHelp(strings.Join(c.Keys["cursorUp"],"\\"), "Up")),
+
+		CursorDown : key.NewBinding(key.WithKeys(c.Keys["cursorDown"]...),
+		key.WithHelp(strings.Join(c.Keys["cursorDown"],"\\"), "Down")),
+
+		Filter : key.NewBinding(key.WithKeys(c.Keys["filter"]...),
+		key.WithHelp(strings.Join(c.Keys["filter"],"\\"), "Filter")),
+
+		GoToEnd : key.NewBinding(key.WithKeys(c.Keys["goToEnd"]...),
+		key.WithHelp(strings.Join(c.Keys["goToEnd"],"\\"), "End")),
+
+		GoToStart : key.NewBinding(key.WithKeys(c.Keys["goToStart"]...),
+		key.WithHelp(strings.Join(c.Keys["goToStart"],"\\"), "Start")),
+
+		Quit : key.NewBinding(key.WithKeys(c.Keys["quit"]...),
+		key.WithHelp(strings.Join(c.Keys["quit"],"\\"), "Quit")),
+
+		CancelWhileFiltering : key.NewBinding(key.WithKeys(tea.KeyEsc.String()),
+		key.WithHelp(tea.KeyEsc.String(), "Cancel filtering")),
+		AcceptWhileFiltering : key.NewBinding(key.WithKeys(tea.KeyEnter.String()),
+		key.WithHelp(tea.KeyEnter.String(), "Cancel filtering")),
+		ShowFullHelp : key.NewBinding(key.WithKeys("?"),
+		key.WithHelp("?", "Show help")),
+
+	}
+
+	m.list.KeyMap = kb
 	m.list.AdditionalFullHelpKeys = getEntryKeys(c)
 
 
@@ -90,8 +120,8 @@ func initialEntriesModel( f func(FeedieConfig)[]list_entry, c FeedieConfig, prev
 
 func (m entriesModel) preloadThumbnails(preload int){
 	items := m.list.Items()
-	si := m.list.Index()
-	ei := min(si+preload, len(items)-1)
+	si := max(0, m.list.Index() - preload/2)
+	ei := min(si+preload, si+preload, len(items))
 	urls := []string{}
 	for _, it := range items[si:ei]{
 		it := it.(list_entry)
@@ -155,7 +185,7 @@ func (m entriesModel) View() string {
 	}
 
 	left := lStyle.Width(leftPaneW).
-		Height(innerH).
+		Height(getPaneHeight(m.height,1)).
 		Render(m.list.View())
 	upper_right := rStyle.Width(rightPaneW).
 		Height(upper_right_height).

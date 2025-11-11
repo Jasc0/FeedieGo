@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -70,6 +71,36 @@ func initialListPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) 
 		prompt: prompt,
 		values: values,
 	}
+	kb := list.KeyMap{
+		CursorUp:  key.NewBinding(key.WithKeys(fc.Keys["cursorUp"]...),
+		key.WithHelp(strings.Join(fc.Keys["cursorUp"],"\\"), "Up")),
+
+		CursorDown : key.NewBinding(key.WithKeys(fc.Keys["cursorDown"]...),
+		key.WithHelp(strings.Join(fc.Keys["cursorDown"],"\\"), "Down")),
+
+		Filter : key.NewBinding(key.WithKeys(fc.Keys["filter"]...),
+		key.WithHelp(strings.Join(fc.Keys["filter"],"\\"), "Filter")),
+
+		GoToEnd : key.NewBinding(key.WithKeys(fc.Keys["goToEnd"]...),
+		key.WithHelp(strings.Join(fc.Keys["goToEnd"],"\\"), "End")),
+
+		GoToStart : key.NewBinding(key.WithKeys(fc.Keys["goToStart"]...),
+		key.WithHelp(strings.Join(fc.Keys["goToStart"],"\\"), "Start")),
+
+		Quit : key.NewBinding(key.WithKeys(fc.Keys["quit"]...),
+		key.WithHelp(strings.Join(fc.Keys["quit"],"\\"), "Quit")),
+
+		CancelWhileFiltering : key.NewBinding(key.WithKeys(tea.KeyEsc.String()),
+		key.WithHelp(tea.KeyEsc.String(), "Cancel filtering")),
+		AcceptWhileFiltering : key.NewBinding(key.WithKeys(tea.KeyEnter.String()),
+		key.WithHelp(tea.KeyEnter.String(), "Cancel filtering")),
+		ShowFullHelp : key.NewBinding(key.WithKeys("?"),
+		key.WithHelp("?", "Show help")),
+
+	}
+
+	m.list.KeyMap = kb
+	m.list.SetFilteringEnabled(true)
 	m.list.SetShowTitle(false)
 	
 	var popUpLIs []popUpListItem
@@ -179,8 +210,13 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.WindowSizeMsg:
 			m.width = msg.Width
 			m.height= msg.Height
-			m.list.SetSize(m.width, m.height/2)
+			m.list.SetSize(m.width-10-2, m.height/2)
 		case tea.KeyMsg:
+			if m.list.FilterState() == list.Filtering{
+				nl, c := m.list.Update(msg)
+				m.list = nl
+				return m, c
+			}
 			switch msg.Type{
 			case tea.KeyEnter:
 				if m.listMultiSelect == true{
@@ -189,7 +225,7 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if !ok{
 							continue
 						}
-						if v.selected{
+						if v.pu_selected{
 							m.values = append(m.values, v.Url)
 						}
 					}
@@ -206,30 +242,40 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.action(m.config,m.values)
 				return m.prevModel, RefreshCmd("")
 
-		case tea.KeySpace:
-			idx := m.list.Index()
-			if idx >= 0 {
-				if it, ok := m.list.Items()[idx].(popUpListItem); ok {
-					it.selected = !it.selected        
-					m.list.SetItem(idx, it)           
+			case tea.KeySpace:
+				idx := m.list.Index()
+				if idx >= 0 {
+					if it, ok := m.list.Items()[idx].(popUpListItem); ok {
+						it.pu_selected = !it.pu_selected        
+						m.list.SetItem(idx, it)           
+					}
 				}
+			case tea.KeyEsc:
+				return m.prevModel, tea.WindowSize()
+
+			default:
+				if in(msg.String(), m.config.Keys["quit"]){
+					return m.prevModel, tea.WindowSize()
+				}
+				nl, c := m.list.Update(msg)
+				m.list = nl
+				return m, c
 			}
-		case tea.KeyEsc:
-			return m.prevModel, tea.WindowSize()
+
 		default:
 			nl, c := m.list.Update(msg)
 			m.list = nl
 			return m, c
+
 		}
 	}
-}
-return m, nil
+	return m, nil
 }
 
 type popUpListItem struct{
 	Title_Field  string `json:"Title"`
 	Url  string `json:"Url"`
-	selected bool
+	pu_selected bool
 }
 
 func (i popUpListItem) Title () string { return i.Title_Field}
@@ -246,11 +292,11 @@ func (d FeediePopUpDelegate) Spacing() int {return 1}
 func (d FeediePopUpDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(popUpListItem)
 	if ok {
-		bar := " " // remove the bar (or set to "▶ " or "→ ")
+		bar := " " 
 		sel_mark :="[ ]"
 		title := i.Title()
 
-		if i.selected{
+		if i.pu_selected{
 			sel_mark = "[*]"
 		}
 

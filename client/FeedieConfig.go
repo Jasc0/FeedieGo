@@ -45,6 +45,10 @@ func parseConfigFile(path string) FeedieConfig{
 		 log.Fatal(err)
 	 }
 
+	 if fc.getThumbnailBackend() == none{
+		fc.ThumbnailRatio = 0
+	 }
+
 	 return fc
 
  }
@@ -243,6 +247,8 @@ func parseConfigFile(path string) FeedieConfig{
 			 "changeFocus":{"tab"},
 			 "cursorDown":{"j","down"},
 			 "cursorUp":{"k","up"},
+			 "goToEnd":{"G"},
+			 "goToStart":{"g"},
 			 "filter":{"/"}, 
 			 "feedMenu":{"m"},
 			 "openMenu":{"o"}, 

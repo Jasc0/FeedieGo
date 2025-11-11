@@ -45,6 +45,35 @@ func initialSelectModel( f func(FeedieConfig)[]list_source, c FeedieConfig) sele
 		
 	}
 
+	kb := list.KeyMap{
+		CursorUp:  key.NewBinding(key.WithKeys(c.Keys["cursorUp"]...),
+		key.WithHelp(strings.Join(c.Keys["cursorUp"],"\\"), "Up")),
+
+		CursorDown : key.NewBinding(key.WithKeys(c.Keys["cursorDown"]...),
+		key.WithHelp(strings.Join(c.Keys["cursorDown"],"\\"), "Down")),
+
+		Filter : key.NewBinding(key.WithKeys(c.Keys["filter"]...),
+		key.WithHelp(strings.Join(c.Keys["filter"],"\\"), "Filter")),
+
+		GoToEnd : key.NewBinding(key.WithKeys(c.Keys["goToEnd"]...),
+		key.WithHelp(strings.Join(c.Keys["goToEnd"],"\\"), "End")),
+
+		GoToStart : key.NewBinding(key.WithKeys(c.Keys["goToStart"]...),
+		key.WithHelp(strings.Join(c.Keys["goToStart"],"\\"), "Start")),
+
+		Quit : key.NewBinding(key.WithKeys(c.Keys["quit"]...),
+		key.WithHelp(strings.Join(c.Keys["quit"],"\\"), "Quit")),
+
+		CancelWhileFiltering : key.NewBinding(key.WithKeys(tea.KeyEsc.String()),
+		key.WithHelp(tea.KeyEsc.String(), "Cancel filtering")),
+		AcceptWhileFiltering : key.NewBinding(key.WithKeys(tea.KeyEnter.String()),
+		key.WithHelp(tea.KeyEnter.String(), "Cancel filtering")),
+		ShowFullHelp : key.NewBinding(key.WithKeys("?"),
+		key.WithHelp("?", "Show help")),
+
+	}
+
+	m.list.KeyMap = kb
 	m.list.SetShowTitle(false)
 	m.list.AdditionalFullHelpKeys = getSelectKeys(c)
 
@@ -122,7 +151,6 @@ func (m selectModel) View() string {
 	
 }
 func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if !m.ready{ m.ready = true; return  m, tea.WindowSize()}
 	switch msg := msg.(type) {
 	case RefreshMsg:
 		c :=  m.Refresh(msg)
@@ -134,60 +162,73 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 		return m, nil
 	case tea.KeyMsg:
+		if m.list.SettingFilter(){
+			nl, c := m.list.Update(msg)
+			m.list = nl
+			return m, c
+		}
 		k := msg.String()
+		if in(k,m.config.Keys["cursorUp"]){
+			m.list.CursorUp()
+			return m, nil
+		}
+		if in(k,m.config.Keys["cursorDown"]){
+			m.list.CursorDown()
+			return m, nil
+		}
 		if in(k,m.config.Keys["open"]){
 			cur := m.getSelectedSource()
 			return initialEntriesModel(cur.SrcFunc, m.config, m,
 			m.getPreloaded(cur.Url)), 
 			tea.WindowSize()
 		}
+
 		if in(k,m.config.Keys["addFeed"]){
-			if m.list.FilterState() != list.Filtering{
-				return initialTextPopupModel(m.config, getActionFunc(addFeed_t), m,
-				"Enter feed url:"), tea.WindowSize()
-			}
+			return initialTextPopupModel(m.config, getActionFunc(addFeed_t), m,
+			"Enter feed url:"), tea.WindowSize()
 		}
 		if in(k,m.config.Keys["addTag"]){
-			if m.list.FilterState() != list.Filtering{
-				return initialTextPopupModel(m.config, getActionFunc(addTag_t), m,
-				"Enter tag name:"), tea.WindowSize()
-			}
+			return initialTextPopupModel(m.config, getActionFunc(addTag_t), m,
+			"Enter tag name:"), tea.WindowSize()
 		}
 		if in(k,m.config.Keys["modTag"]){
-			if m.list.FilterState() != list.Filtering{
-				sel := m.list.SelectedItem()
-				s, ok := sel.(list_source)
-				if ok && s.SrcType == Tag{
-					return initialListPopupModel(m.config, getActionFunc(modTagMember_t), getModTagOptions, true, m,
-					"Select member feeds:", []string{s.Title_field}), tea.WindowSize()
-				}
+			sel := m.list.SelectedItem()
+			s, ok := sel.(list_source)
+			if ok && s.SrcType == Tag{
+				return initialListPopupModel(m.config, getActionFunc(modTagMember_t), getModTagOptions, true, m,
+				"Select member feeds:", []string{s.Title_field}), tea.WindowSize()
 			}
 		}
 		if in(k,m.config.Keys["delete"]){
-			if m.list.FilterState() != list.Filtering{
-				cur := m.getSelectedSource()
-				if cur.SrcType == Feed{
-					return initialConfirmPopupModel(m.config, getActionFunc(delFeed_t), m,
-					fmt.Sprintf("Delete feed %s ?", cur.Title_field),[]string{cur.Url}), tea.WindowSize()
-				}
-				if cur.SrcType == Tag{
-					return initialConfirmPopupModel(m.config, getActionFunc(delTag_t), m,
-					fmt.Sprintf("Delete tag %s ?", cur.Title_field),[]string{cur.Title_field}), tea.WindowSize()
-				}
+			cur := m.getSelectedSource()
+			if cur.SrcType == Feed{
+				return initialConfirmPopupModel(m.config, getActionFunc(delFeed_t), m,
+				fmt.Sprintf("Delete feed %s ?", cur.Title_field),[]string{cur.Url}), tea.WindowSize()
+			}
+			if cur.SrcType == Tag{
+				return initialConfirmPopupModel(m.config, getActionFunc(delTag_t), m,
+				fmt.Sprintf("Delete tag %s ?", cur.Title_field),[]string{cur.Title_field}), tea.WindowSize()
 			}
 		}
 		if in(k,m.config.Keys["refresh"]){
-			if m.list.FilterState() != list.Filtering{
-				return m, RefreshCmd("")
-			}
+			return m, RefreshCmd("")
 		}
+		if in(k,m.config.Keys["filter"]){
+			nl, c := m.list.Update(msg)
+			m.list = nl
+			return m, c
+		}
+		if in(k,m.config.Keys["quit"]){
+			return m, tea.Quit
+		}
+	default:
+		nl, c := m.list.Update(msg)
+		m.list = nl
+		return m, c
 	}
 	m.preloadFeeds(PRELOAD_AMT)
-	nl, c := m.list.Update(msg)
-	m.list = nl
-	return m, c
+	return m, nil
 }
-
 func (m *selectModel) Refresh (msg RefreshMsg) tea.Cmd{
 	var sources []list.Item
 	index := m.list.Index()

@@ -3,23 +3,19 @@ package main
 import (
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"strings"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func in(k string, match_to[]string) bool{
-	for _, s := range match_to{
-		if k == s{
-			return true
-		}
-	}
-	return false
+	return slices.Contains(match_to, k)
 }
 
 type RefreshMsg struct{itemName string}

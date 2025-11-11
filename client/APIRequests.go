@@ -279,7 +279,7 @@ func getModTagOptions(config FeedieConfig, tag string) []popUpListItem{
 		log.Fatal(err)
 	}
 	for _, p := range peice{
-		p.selected = true
+		p.pu_selected = true
 		ret = append(ret, p)
 	}
 	resp.Body.Close()
@@ -301,7 +301,7 @@ func getModTagOptions(config FeedieConfig, tag string) []popUpListItem{
 		log.Fatal(err)
 	}
 	for _, p := range peice{
-		p.selected = false
+		p.pu_selected = false
 		ret = append(ret, p)
 	}
 
