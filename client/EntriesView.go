@@ -300,6 +300,14 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+		if in(k,m.config.Keys["copyLink"]){
+			if m.list.FilterState() != list.Filtering{
+				if len(cur.Links) >= 1{
+					defaultLink := cur.Links[0]
+					m.config.getYanker(m.config, []string{defaultLink.URL})
+				}
+			}
+		}
 		if in(k,m.config.Keys["refresh"]){
 			if m.list.FilterState() != list.Filtering{
 				return m, RefreshCmd("")

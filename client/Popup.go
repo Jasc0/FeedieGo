@@ -252,12 +252,22 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.action(m.config,m.values)
 				return m.prevModel, m.end("")
 			}
+
 			if in(k, m.config.Keys["select"]){
 				selected := m.list.SelectedItem()
 				sel, ok := selected.(popUpListItem)
 				if ok{ 
 					sel.pu_selected = !sel.pu_selected
 					return m, m.list.SetItem(m.list.GlobalIndex(), sel)
+				}
+				return m, nil
+			}
+			if in(k, m.config.Keys["copyLink"]){
+				selected := m.list.SelectedItem()
+				sel, ok := selected.(popUpListItem)
+				if ok && m.listMultiSelect{ 
+					//title field should hold url for openMenu
+					m.config.getYanker(m.config,[]string{sel.Title_Field, sel.Url})	 
 				}
 				return m, nil
 			}

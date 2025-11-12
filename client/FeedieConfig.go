@@ -1,15 +1,18 @@
 package main
 
-import(
-	"log"
-	"os/exec"
-	"regexp"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/bubbles/list"
-	"path/filepath"
-	"os"
-	"errors"
+import (
 	"encoding/json"
+	"errors"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func parseConfigFile(path string) FeedieConfig{
@@ -85,6 +88,7 @@ func parseConfigFile(path string) FeedieConfig{
 	 ThumbnailPath string`json:"thumbnailpath"` 
 	 ThumbnailBackend string`json:"thumbnailbackend"` 
 	 ThumbnailScaler string`json:"thumbnailscaler"` 
+	 LinkCopyCommand string`json:"linkcopycommand"` 
 	 TypeOpener map[string]string`json:"typeopener"` 
 	 URLOpener map[string]string`json:"urlopener"` 
 	 DefaultOpener string`json:"defaultopener"` 
@@ -175,6 +179,18 @@ func parseConfigFile(path string) FeedieConfig{
 	 return del
  }
 
+ func (fc FeedieConfig) getYanker(pfc FeedieConfig, values []string){
+	 link := values[0]
+	 cmdParts := strings.Split(pfc.LinkCopyCommand," ")
+	 cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
+	 stdin, err := cmd.StdinPipe()
+    if err != nil {
+        log.Fatal(err)
+    }
+	 if err := cmd.Start(); err != nil { log.Fatal(err) }
+	 if _, err := io.WriteString(stdin, link); err != nil { log.Fatal(err) }
+	 if err := stdin.Close(); err != nil { log.Fatal(err) } 
+ }
  func (fc FeedieConfig) getLinkOpener(pfc FeedieConfig, values []string) error{
 	 if len(values) < 2{
 		 log.Fatal("odd length of values")
@@ -234,11 +250,13 @@ func parseConfigFile(path string) FeedieConfig{
 		 ThumbnailPath: "/tmp/feedie-go",
 		 ThumbnailBackend: "kitty",
 		 ThumbnailScaler: "fit_contain",
+		 LinkCopyCommand: "xclip -i -selection clipboard",
 		 DefaultOpener: "xdg-open",
 		 URLOpener: make(map[string]string),
 		 TypeOpener: make(map[string]string),
 		 Keys: map[string][]string{
 			 "open":{"enter"}, 
+			 "copyLink":{"y"},
 			 "addTag":{"t"}, 
 			 "modTag":{"T"}, 
 			 "addFeed":{"a"}, 
