@@ -203,7 +203,7 @@ func (m entriesModel) View() string {
 func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cur := m.getSelectedEntry()
 	switch msg := msg.(type) {
-	case RefreshMsg:
+	case FeedieMsg:
 		return m, m.Refresh()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -288,7 +288,7 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.list.FilterState() != list.Filtering{
 				m.thumbnail.clear()
 				return initialListPopupModel(m.config, m.config.getLinkOpener, cur.getLinks,
-					false, m, "Choose which link to open", []string{} ), tea.WindowSize()
+					false, m, "Choose which link to open", []string{}, RefreshCmd), tea.WindowSize()
 
 			}
 		}

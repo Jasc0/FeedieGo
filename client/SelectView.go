@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -157,9 +158,21 @@ func (m selectModel) View() string {
 }
 func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case RefreshMsg:
-		c :=  m.Refresh(msg)
-		return m, c
+	case FeedieMsg:
+		switch msg.MsgType{
+		case addTagMsg:
+			c :=  m.Refresh(msg)
+			sel := m.list.SelectedItem()
+			s, ok := sel.(list_source)
+			if !ok{
+				log.Fatal("ERR Modifying tags")
+			}
+			return initialListPopupModel(m.config, getActionFunc(modTagMember_t), getModTagOptions, true, m,
+			"Select member feeds:", []string{s.Title_field}, RefreshCmd), c
+		case refreshMsg:
+			c :=  m.Refresh(msg)
+			return m, c
+		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height= msg.Height
@@ -190,29 +203,29 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if in(k,m.config.Keys["addFeed"]){
 			return initialTextPopupModel(m.config, getActionFunc(addFeed_t), m,
-			"Enter feed url:"), tea.WindowSize()
-		}
+			"Enter feed url:", RefreshCmd ), tea.WindowSize()
+		} 
 		if in(k,m.config.Keys["addTag"]){
 			return initialTextPopupModel(m.config, getActionFunc(addTag_t), m,
-			"Enter tag name:"), tea.WindowSize()
+			"Enter tag name:", addTagCmd), tea.WindowSize()
 		}
 		if in(k,m.config.Keys["modTag"]){
 			sel := m.list.SelectedItem()
 			s, ok := sel.(list_source)
 			if ok && s.SrcType == Tag{
 				return initialListPopupModel(m.config, getActionFunc(modTagMember_t), getModTagOptions, true, m,
-				"Select member feeds:", []string{s.Title_field}), tea.WindowSize()
+				"Select member feeds:", []string{s.Title_field}, RefreshCmd), tea.WindowSize()
 			}
 		}
 		if in(k,m.config.Keys["delete"]){
 			cur := m.getSelectedSource()
 			if cur.SrcType == Feed{
 				return initialConfirmPopupModel(m.config, getActionFunc(delFeed_t), m,
-				fmt.Sprintf("Delete feed %s ?", cur.Title_field),[]string{cur.Url}), tea.WindowSize()
+				fmt.Sprintf("Delete feed %s ?", cur.Title_field),[]string{cur.Url},RefreshCmd), tea.WindowSize()
 			}
 			if cur.SrcType == Tag{
 				return initialConfirmPopupModel(m.config, getActionFunc(delTag_t), m,
-				fmt.Sprintf("Delete tag %s ?", cur.Title_field),[]string{cur.Title_field}), tea.WindowSize()
+				fmt.Sprintf("Delete tag %s ?", cur.Title_field),[]string{cur.Title_field},RefreshCmd), tea.WindowSize()
 			}
 		}
 		if in(k,m.config.Keys["refresh"]){
@@ -242,7 +255,7 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.preloadFeeds(PRELOAD_AMT)
 	return m, nil
 }
-func (m *selectModel) Refresh (msg RefreshMsg) tea.Cmd{
+func (m *selectModel) Refresh (msg FeedieMsg) tea.Cmd{
 	var sources []list.Item
 	index := m.list.Index()
 	prevFilter := ""
@@ -251,7 +264,7 @@ func (m *selectModel) Refresh (msg RefreshMsg) tea.Cmd{
 		prevFilter = m.list.FilterValue()
 	}
 	for i, src := range m.optFunc(m.config){
-		if src.Title_field == msg.itemName{
+		if src.Title_field == msg.Item{
 			index = i
 		}
 		sources = append(sources, src)

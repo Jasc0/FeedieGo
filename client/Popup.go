@@ -35,8 +35,9 @@ type popUpModel struct{
 	config FeedieConfig
 	prompt string
 	values []string // used for passing data for action call
+	end func(string) tea.Cmd 
 }
-func initialTextPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) error, prev tea.Model, prompt string) tea.Model{
+func initialTextPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) error, prev tea.Model, prompt string, end func(string) tea.Cmd) tea.Model{
 	m := popUpModel{
 		prevModel: prev,
 		display: text_t,
@@ -44,11 +45,12 @@ func initialTextPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) 
 		action: action,
 		config: fc,
 		prompt: prompt,
+		end: end,
 	}
 	m.textinput.Focus()
 	return m
 }
-func initialConfirmPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) error, prev tea.Model, prompt string, values []string) tea.Model{
+func initialConfirmPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) error, prev tea.Model, prompt string, values []string, end func(string) tea.Cmd) tea.Model{
 	m := popUpModel{
 		prevModel: prev,
 		display: confirm_t,
@@ -57,10 +59,11 @@ func initialConfirmPopupModel(fc FeedieConfig, action func(FeedieConfig, []strin
 		config: fc,
 		prompt: prompt,
 		values: values,
+		end: end,
 	}
 	return m
 }
-func initialListPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) error, srcFunc func(FeedieConfig, string) []popUpListItem, multi bool, prev tea.Model, prompt string, values []string) tea.Model{
+func initialListPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) error, srcFunc func(FeedieConfig, string) []popUpListItem, multi bool, prev tea.Model, prompt string, values []string, end func(string) tea.Cmd) tea.Model{
 	m := popUpModel{
 		prevModel: prev,
 		display: list_t,
@@ -70,6 +73,7 @@ func initialListPopupModel(fc FeedieConfig, action func(FeedieConfig, []string) 
 		config: fc,
 		prompt: prompt,
 		values: values,
+		end: end,
 	}
 	kb := list.KeyMap{
 		CursorUp:  key.NewBinding(key.WithKeys(fc.Keys["cursorUp"]...),
@@ -175,7 +179,7 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					log.Fatal(err)
 				}
 
-				return m.prevModel, RefreshCmd(value)
+				return m.prevModel, m.end(value)
 
 			case tea.KeyEsc :
 				return m.prevModel, tea.WindowSize()
@@ -202,12 +206,12 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 				}
-				return m.prevModel, RefreshCmd("")
+				return m.prevModel, m.end("")
 			case tea.KeyTab, tea.KeyRight, tea.KeyLeft:
 				m.confirm = !m.confirm
 				return m, nil
 			case tea.KeyEsc:
-				return m.prevModel, RefreshCmd("")
+				return m.prevModel, tea.WindowSize()
 			}
 		}
 	case list_t:
@@ -246,14 +250,14 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				}
 				m.action(m.config,m.values)
-				return m.prevModel, RefreshCmd("")
+				return m.prevModel, m.end("")
 			}
 			if in(k, m.config.Keys["select"]){
 				selected := m.list.SelectedItem()
 				sel, ok := selected.(popUpListItem)
 				if ok{ 
 					sel.pu_selected = !sel.pu_selected
-					m.list.SetItem(m.list.Index(), sel)
+					return m, m.list.SetItem(m.list.GlobalIndex(), sel)
 				}
 				return m, nil
 			}
@@ -294,7 +298,7 @@ type popUpListItem struct{
 
 func (i popUpListItem) Title () string { return i.Title_Field}
 func (i popUpListItem) Description () string {return  ""}
-func (i popUpListItem) FilterValue () string {return i.Title_Field}
+func (i popUpListItem) FilterValue () string {return i.Title_Field + " " + i.Url}
 
 type FeediePopUpDelegate struct{
 	list.DefaultDelegate
@@ -317,11 +321,11 @@ func (d FeediePopUpDelegate) Render(w io.Writer, m list.Model, index int, listIt
 
 		if index == m.Index() {
 			bar = "┃" // custom indicator
-			title = d.Styles.SelectedTitle.MaxWidth(m.Width()-2).Render(title)
+			title = d.Styles.SelectedTitle.MaxWidth(m.Width()/2-2).Render(title)
 			bar = d.Styles.SelectedTitle.Foreground(lipgloss.Color(d.config.FocusBorderC)).Render(bar)
 		}else{
 			bar = " " // custom indicator
-			title = d.Styles.NormalTitle.MaxWidth(m.Width() - 2).Render(title)
+			title = d.Styles.NormalTitle.MaxWidth(m.Width()/2 - 2).Render(title)
 			bar = d.Styles.NormalTitle.Foreground(lipgloss.Color(d.config.SelectCursor)).Render(bar)
 		}
 		if d.multi{

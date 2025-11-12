@@ -18,9 +18,21 @@ func in(k string, match_to[]string) bool{
 	return slices.Contains(match_to, k)
 }
 
-type RefreshMsg struct{itemName string}
-func RefreshCmd(item string) tea.Cmd {
-	return func () tea.Msg { return  RefreshMsg{itemName: item}}
+type FMsgType int 
+const(
+	refreshMsg FMsgType = iota 
+	addTagMsg
+)
+
+type FeedieMsg struct{MsgType FMsgType; Item any}
+func FeedieCmd(t FMsgType,i any) tea.Cmd {
+	return func () tea.Msg { return  FeedieMsg{MsgType: t, Item: i}}
+}
+func RefreshCmd(name string) tea.Cmd{
+	return func () tea.Msg { return FeedieMsg{MsgType: refreshMsg, Item: name}}
+}
+func addTagCmd(name string) tea.Cmd{
+	return FeedieCmd(addTagMsg, name)
 }
 
 type FeedieLink struct {
