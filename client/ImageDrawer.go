@@ -13,6 +13,9 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 )
 
 
@@ -133,7 +136,15 @@ func (tm thumbnailManager) drawImage (x, y, width, height int, url string) bool{
 		tm.showing = true
 		return true
 	case ueberzug:
-		tm.ueberzug.Show(x, y, width, height, path)
+		var XOffset, YOffset int
+		IAR, err := GetAspectRatio(path)
+		if err != nil{
+			XOffset, YOffset = 0, 0
+		}
+		CELL_R := CELL_W/CELL_H
+		XOffset = max(0, width/2 - int(IAR*float64(height)*1/CELL_R)/2)
+		YOffset = max(0,int(float64(height)/(2*CELL_R) - float64(width)/(2*IAR)))
+			tm.ueberzug.Show(x + XOffset , y + YOffset, width, height, path)
 		tm.current = url
 		tm.showing = true
 		return true
@@ -250,3 +261,27 @@ func (uzc *ueberzugClient)Hide(){
 	defer uzc.mu.Unlock()
 	if _, err := uzc.in.Write(bytes); err != nil { log.Fatal(err) }
 }
+
+
+
+// GetAspectRatio takes an image file path and returns its aspect ratio (width / height).
+func GetAspectRatio(imagePath string) (float64, error) {
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to open image: %w", err)
+	}
+	defer file.Close()
+
+	img, _, err := image.DecodeConfig(file)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	if img.Height == 0 {
+		return 0, fmt.Errorf("image height is zero")
+	}
+
+	aspectRatio := float64(img.Width) / float64(img.Height)
+	return aspectRatio, nil
+}
+
