@@ -185,15 +185,18 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list = nl
 			return m, c
 		}
+
 		k := msg.String()
 		if in(k,m.config.Keys["cursorUp"]){
 			m.list.CursorUp()
 			return m, nil
 		}
+
 		if in(k,m.config.Keys["cursorDown"]){
 			m.list.CursorDown()
 			return m, nil
 		}
+
 		if in(k,m.config.Keys["open"]){
 			cur := m.getSelectedSource()
 			return initialEntriesModel(cur.SrcFunc, m.config, m,
@@ -205,10 +208,12 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return initialTextPopupModel(m.config, getActionFunc(addFeed_t), m,
 			"Enter feed url:", RefreshCmd ), tea.WindowSize()
 		} 
+
 		if in(k,m.config.Keys["addTag"]){
 			return initialTextPopupModel(m.config, getActionFunc(addTag_t), m,
 			"Enter tag name:", addTagCmd), tea.WindowSize()
 		}
+
 		if in(k,m.config.Keys["modTag"]){
 			sel := m.list.SelectedItem()
 			s, ok := sel.(list_source)
@@ -217,6 +222,7 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				"Select member feeds:", []string{s.Title_field}, RefreshCmd), tea.WindowSize()
 			}
 		}
+
 		if in(k,m.config.Keys["delete"]){
 			cur := m.getSelectedSource()
 			if cur.SrcType == Feed{
@@ -228,9 +234,12 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Sprintf("Delete tag %s ?", cur.Title_field),[]string{cur.Title_field},RefreshCmd), tea.WindowSize()
 			}
 		}
+
 		if in(k,m.config.Keys["refresh"]){
+			m.clearPreload()
 			return m, RefreshCmd("")
 		}
+
 		if in(k,m.config.Keys["help"]){
 			if m.list.ShowHelp(){
 				m.list.SetShowHelp(false)
@@ -239,14 +248,21 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m,nil
 		}
+
 		if in(k,m.config.Keys["filter"]){
 			nl, c := m.list.Update(msg)
 			m.list = nl
 			return m, c
 		}
+
 		if in(k,m.config.Keys["quit"]){
 			return m, tea.Quit
 		}
+
+		nl, c := m.list.Update(msg)
+		m.list = nl
+		return m, c
+
 	default:
 		nl, c := m.list.Update(msg)
 		m.list = nl
@@ -255,6 +271,7 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.preloadFeeds(PRELOAD_AMT)
 	return m, nil
 }
+
 func (m *selectModel) Refresh (msg FeedieMsg) tea.Cmd{
 	var sources []list.Item
 	index := m.list.Index()
@@ -274,14 +291,18 @@ func (m *selectModel) Refresh (msg FeedieMsg) tea.Cmd{
 	setc := m.list.SetItems(sources)
 	if prevFilter != "" {m.list.SetFilterText(prevFilter)}
 	m.list.Select(index)
+
+	return tea.Batch(setc, tea.WindowSize()) 
+}
+
+func (m *selectModel) clearPreload(){
 	preloadMu.Lock()
 	for k := range preloadMap {
 		delete(preloadMap, k)
 	}
 	preloadMu.Unlock()
-	return tea.Batch(setc, tea.WindowSize()) 
-
 }
+
 func getSelectKeys(fc FeedieConfig) func() []key.Binding{
 	selectCommands := []string{"addFeed", "addTag", "delete", "modTag", "refesh"}	
 	ret := []key.Binding{}

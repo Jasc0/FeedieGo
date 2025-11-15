@@ -124,9 +124,10 @@ func (tm thumbnailManager) drawImage (x, y, width, height int, url string) bool{
 	case kitty:
 		imgBytes, _ := os.ReadFile(path)
 		cmd := exec.Command("kitten", "icat",  
-		fmt.Sprintf("--place=%dx%d@%dx%d",width,height,x,y), "--stdin=yes","--scale-up=yes", "--transfer-mode=stream", "--image-id=1")	
+		fmt.Sprintf("--place=%dx%d@%dx%d",width,height,x,y), 
+		"--stdin=yes","--scale-up=yes", "--transfer-mode=stream", "--image-id=1")	
 		cmd.Stdout =tm.devtty
-		cmd.Stderr = nil
+		cmd.Stderr = tm.devtty
 		cmd.Stdin  = bytes.NewReader(imgBytes)
 		err := cmd.Run()
 		if err != nil{
@@ -136,15 +137,7 @@ func (tm thumbnailManager) drawImage (x, y, width, height int, url string) bool{
 		tm.showing = true
 		return true
 	case ueberzug:
-		var XOffset, YOffset int
-		IAR, err := GetAspectRatio(path)
-		if err != nil{
-			XOffset, YOffset = 0, 0
-		}
-		CELL_R := CELL_W/CELL_H
-		XOffset = max(0, width/2 - int(IAR*float64(height)*1/CELL_R)/2)
-		YOffset = max(0,int(float64(height)/(2*CELL_R) - float64(width)/(2*IAR)))
-			tm.ueberzug.Show(x + XOffset , y + YOffset, width, height, path)
+			tm.ueberzug.Show(x , y, width, height, path)
 		tm.current = url
 		tm.showing = true
 		return true
@@ -231,11 +224,20 @@ func ueberzugStart(tm thumbnailManager) *ueberzugClient{
 }
 
 func (uzc *ueberzugClient)Show(x, y, width, height int, path string){
+	var XOffset, YOffset int
+	IAR, err := GetAspectRatio(path)
+	if err != nil || in(uzc.scaler, []string{"distort","crop"}){
+		XOffset, YOffset = 0, 0
+	} else{
+		CELL_R := CELL_W/CELL_H
+		XOffset = max(0, width/2 - int(IAR*float64(height)*1/CELL_R)/2)
+		YOffset = max(0,int(float64(height)/(2*CELL_R) - float64(width)/(2*IAR)))
+	}
 	msg := map[string]any{
 		"action":     "add",
 		"identifier": "1",
-		"x":          x,
-		"y":          y,
+		"x":          x + XOffset,
+		"y":          y + YOffset,
 		"width":      width,
 		"height":     height,
 		"path":       path,
