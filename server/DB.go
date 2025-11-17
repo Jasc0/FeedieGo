@@ -158,7 +158,7 @@ ON CONFLICT(id) DO UPDATE SET
 	statement = `INSERT INTO links
 	(id, url, entry_id, link_type)
 	VALUES (?,?,?,?)
-	ON CONFLICT(url) DO UPDATE SET
+	ON CONFLICT(id) DO UPDATE SET
 	entry_id = excluded.entry_id,
 	link_type = excluded.link_type;`
 

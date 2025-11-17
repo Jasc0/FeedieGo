@@ -39,7 +39,7 @@ func feedieInit(){
 	}else{
 		feedieServer.refreshRate = DEFAULT_REFRESH
 	}
-	feedieServer.timeOfNextRefresh += feedieServer.refreshRate
+	feedieServer.timeOfNextRefresh = time.Now().Unix() + feedieServer.refreshRate
 	if v, exists := os.LookupEnv("FEEDIE_SERVER_DB_PATH"); exists{
 		path := v
 		feedieServer.dbFilePath = path
@@ -57,6 +57,14 @@ func feedieInit(){
 func main(){
 	feedieInit()
 	DBInit(feedieServer.dbFilePath)
+	args := os.Args
+	if len(args) >1 {
+		if args[1] == "migrate_add_link_id"{
+			migrate_add_link_id()	
+			log.Println("Successful Migration")
+			return
+		}
+	}
 	go refreshThread(feedieServer.refreshRate)
 	FeedieStartServer(feedieServer.port)
 }
@@ -84,4 +92,23 @@ func refreshThread(timeInSeconds int64){
 	}
 }
 
+func migrate_add_link_id(){
+	DBExecuteSQL("ALTER TABLE links RENAME TO links_old;", []any{})
+	DBExecuteSQL(`CREATE TABLE IF NOT EXISTS links (
+    id TEXT PRIMARY KEY,
+    url TEXT NOT NULL,
+    entry_id TEXT NOT NULL,
+    link_type TEXT,
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+		);`,[]any{})
+DBExecuteSQL(`INSERT INTO links (id, url, entry_id, link_type)
+		SELECT
+		url || entry_id AS id, 
+		url,
+		entry_id,
+		link_type
+		FROM links_old;
+		`, []any{})
+DBExecuteSQL(`DROP TABLE links_old;`, []any{})
 
+}
