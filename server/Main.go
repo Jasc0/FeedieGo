@@ -20,7 +20,7 @@ type FeedieServer struct{
 
 var feedieServer *FeedieServer
 func feedieInit(){
-	feedieServer = &FeedieServer{timeOfNextRefresh: time.Now().Unix()}
+	feedieServer = &FeedieServer{}
 	if v, exists := os.LookupEnv("FEEDIE_SERVER_PORT"); exists{
 		port, err:= strconv.Atoi(v)
 		if err != nil{
@@ -39,6 +39,7 @@ func feedieInit(){
 	}else{
 		feedieServer.refreshRate = DEFAULT_REFRESH
 	}
+	feedieServer.timeOfNextRefresh += feedieServer.refreshRate
 	if v, exists := os.LookupEnv("FEEDIE_SERVER_DB_PATH"); exists{
 		path := v
 		feedieServer.dbFilePath = path
@@ -64,7 +65,6 @@ func refreshThread(timeInSeconds int64){
 	for true{
 	feeds := DBGetFeeds(false)
 	for _, feed := range feeds{
-		feed := feed
 		go func (f FeedieFeed) {
 		newFeed := parser(f.Url)
 		if newFeed == nil{

@@ -68,7 +68,8 @@ func DBInit(path string) {
 
 	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS links (
-		url TEXT PRIMARY KEY,
+		id TEXT PRIMARY KEY,
+		url TEXT NOT NULL,
 		entry_id TEXT NOT NULL,
 		link_type TEXT,
 		FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
@@ -104,6 +105,15 @@ func GetHashString(root string) string{
 	hasher := fnv.New64a()
 	hasher.Write([]byte(root))
 	return fmt.Sprintf("%x", hasher.Sum64())
+}
+
+func DBExecuteSQL(statement string, args []any){
+	dbMu.Lock()
+	defer dbMu.Unlock()
+	_, err = db.Exec(statement, args...)
+	if err != nil{
+		log.Fatal(err)
+	}
 }
 
 func DBAddFeed(feed FeedieFeed){
@@ -146,14 +156,14 @@ ON CONFLICT(id) DO UPDATE SET
 	}
 
 	statement = `INSERT INTO links
-	(url, entry_id, link_type)
-	VALUES (?,?,?)
+	(id, url, entry_id, link_type)
+	VALUES (?,?,?,?)
 	ON CONFLICT(url) DO UPDATE SET
 	entry_id = excluded.entry_id,
 	link_type = excluded.link_type;`
 
 	for _, link := range entry.Links{
-		_, err = db.Exec(statement,link.URL,entry_id,link.Type)
+		_, err = db.Exec(statement,GetHashString(link.URL+entry_id),link.URL,entry_id,link.Type)
 		if err != nil{
 			log.Fatal(err)
 		}
