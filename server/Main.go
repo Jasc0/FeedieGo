@@ -39,7 +39,6 @@ func feedieInit(){
 	}else{
 		feedieServer.refreshRate = DEFAULT_REFRESH
 	}
-	feedieServer.timeOfNextRefresh = time.Now().Unix() + feedieServer.refreshRate
 	if v, exists := os.LookupEnv("FEEDIE_SERVER_DB_PATH"); exists{
 		path := v
 		feedieServer.dbFilePath = path
@@ -70,25 +69,26 @@ func main(){
 }
 
 func refreshThread(timeInSeconds int64){
+	feedieServer.timeOfNextRefresh = time.Now().Unix() + feedieServer.refreshRate
 	for true{
-	feeds := DBGetFeeds(false)
-	for _, feed := range feeds{
-		go func (f FeedieFeed) {
-		newFeed := parser(f.Url)
-		if newFeed == nil{
-			log.Printf("unable to refresh feed: %s", f.Url)
-			return
-		}
-		DBAddFeedWithEntries(*newFeed)
-		log.Printf("Refreshed feed: %s", newFeed.Url)
-	}(feed)
+		log.Println("Refreshing feeds")
+		feeds := DBGetFeeds(false)
+		for _, feed := range feeds{
+			go func () {
+				newFeed := parser(feed.Url)
+				if newFeed == nil{
+					log.Printf("unable to refresh feed: %s", feed.Url)
+					return
+				}
+				DBAddFeedWithEntries(*newFeed)
+				log.Printf("Refreshed feed: %s\n", newFeed.Url)
+			}()
 
-	}
-	for time.Now().Unix() < feedieServer.timeOfNextRefresh{
-		time.Sleep(time.Duration(5) * time.Second)
-	}
-	log.Println("Refreshing feeds")
-	feedieServer.timeOfNextRefresh += timeInSeconds
+		}
+		for time.Now().Unix() < feedieServer.timeOfNextRefresh{
+			time.Sleep(time.Duration(5) * time.Second)
+		}
+		feedieServer.timeOfNextRefresh += timeInSeconds
 	}
 }
 
