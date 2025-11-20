@@ -14,6 +14,18 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const zeroWidthChars = "\u3164\u200B\u200C\u200D\u200E\u200F\u2060\u2063\uFEFF" 
+func stripZWC(str string) string{
+ if !strings.ContainsAny(str, zeroWidthChars){                  
+    return strings.Replace(str,"\t"," ",-1)                      
+  }                                                                        
+  s := str                                                       
+  for _, char := range zeroWidthChars {                                    
+    s = strings.ReplaceAll(s, string(char), "")                            
+  }
+	return s
+
+}
 func in(k string, match_to[]string) bool{
 	return slices.Contains(match_to, k)
 }
@@ -47,8 +59,8 @@ type list_entry struct{
 	Published int `json:"Published"`
 	Links []FeedieLink `json:"Links"`
 }
-func (i list_entry) Title() string       { return i.Title_field }
-func (i list_entry) Description() string { return i.Author }
+func (i list_entry) Title() string       { return stripZWC(i.Title_field)}
+func (i list_entry) Description() string { return stripZWC(i.Author)}
 func (i list_entry) FilterValue() string { return i.Title_field }
 
 func (i list_entry) FullDescription(Width int) string{
@@ -64,7 +76,7 @@ func (i list_entry) FullDescription(Width int) string{
 	}
 	base += md
 
-	return lipgloss.NewStyle().Width(Width).Render(base)
+	return lipgloss.NewStyle().Width(Width).Render(stripZWC(base))
 	
 }
 
@@ -164,7 +176,7 @@ func (i list_source) Title() string       {
 	default:
 		icon = ""
 	}
-	return fmt.Sprintf("%s%s",icon,i.Title_field) 
+	return fmt.Sprintf("%s%s",icon,stripZWC(i.Title_field)) 
 }
 func (i list_source) Description() string { return "" }
-func (i list_source) FilterValue() string { return i.Title_field }
+func (i list_source) FilterValue() string { return stripZWC(i.Title_field)}
