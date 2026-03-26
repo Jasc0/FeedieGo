@@ -61,7 +61,6 @@ func initThumbnailManager(config FeedieConfig) thumbnailManager{
 	devtty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil{ log.Fatal(err)}
 	tm.devtty = devtty
-	if err != nil{ log.Fatal(err)}
 
 
 	switch(tm.backend){
@@ -82,7 +81,7 @@ func (tm thumbnailManager) preloadImages(urls []string){
 			_, err := os.Stat(desired_path)
 			if err == nil {
 				tm.url_to_path[u] = desired_path
-				return
+				continue
 			}
 
 			if download_file(u,desired_path){

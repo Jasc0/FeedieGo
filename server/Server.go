@@ -60,6 +60,10 @@ func getEntriesHandler (w http.ResponseWriter, r *http.Request) {
 		log.Printf("serving /get_entries feed=%s\n", value)
 		data = DBGetByFeedTimeOrdered(DBGetFeedByName(value), order)
 
+	default:
+		log.Printf("error serving /get_entries invalid method=%s", method)
+		http.Error(w, "invalid method", http.StatusBadRequest)
+		return
 	}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -149,6 +153,10 @@ func addFeedHandler (w http.ResponseWriter, r *http.Request) {
 }
 func addFeed(url string){
 	feed := parser(url)
+	if feed == nil {
+		log.Printf("unable to parse feed: %s", url)
+		return
+	}
 	DBAddFeedWithEntries(*feed)
 }
 

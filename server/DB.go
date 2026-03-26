@@ -197,32 +197,32 @@ func DBAddTag(tag_name string){
 func DBAddFeedToTag(feed FeedieFeed, tag string){
 	var feed_id string
 	var tag_id string
+
 	dbMu.RLock()
-	err = db.QueryRow("SELECT id FROM feeds WHERE title = ? AND url = ?", feed.Title, feed.Url).Scan(&feed_id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Println("No matching row found")
+	feedErr := db.QueryRow("SELECT id FROM feeds WHERE title = ? AND url = ?", feed.Title, feed.Url).Scan(&feed_id)
+	tagErr  := db.QueryRow("SELECT id FROM tags WHERE name = ?", tag).Scan(&tag_id)
+	dbMu.RUnlock()
+
+	if feedErr != nil {
+		if feedErr == sql.ErrNoRows {
+			log.Println("No matching feed found")
 			return
-		} else {
-			log.Fatal(err)
 		}
+		log.Fatal(feedErr)
 	}
-	err = db.QueryRow("SELECT id FROM tags WHERE name = ?", tag).Scan(&tag_id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Println("No matching row found")
+	if tagErr != nil {
+		if tagErr == sql.ErrNoRows {
+			log.Println("No matching tag found, creating it")
 			DBAddTag(tag)
 			DBAddFeedToTag(feed, tag)
 			return
-		} else {
-			log.Fatal(err)
 		}
+		log.Fatal(tagErr)
 	}
-	dbMu.RUnlock()
 
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(`INSERT INTO tag_members 
+	_, err = db.Exec(`INSERT INTO tag_members
 	(tag_id, feed_id)
 	VALUES (?,?);`, tag_id, feed_id)
 	if err != nil{
@@ -230,98 +230,79 @@ func DBAddFeedToTag(feed FeedieFeed, tag string){
 	}
 }
 
-func DBGetAllTimeOrdered(isAsc timeOrder) []FeedieEntry{
+// scanEntries aggregates a LEFT JOIN result (entries + links) into []FeedieEntry.
+// Each entry may appear on multiple rows (one per link); NULL link columns mean no links.
+func scanEntries(rows *sql.Rows) []FeedieEntry {
 	ret := []FeedieEntry{}
-	query :="SELECT id, title, author, description, thumbnail, published FROM entries ORDER BY published DESC"
-	if isAsc{
-		query= strings.Replace(query, "DESC", "ASC", 1)
-	}
-	dbMu.RLock()
-	defer dbMu.RUnlock()
-	entries, err := db.Query(query)
-	if err != nil{
-		log.Fatal(err)
-	}
-	defer entries.Close()
-	for entries.Next() {
+	var cur *FeedieEntry
+	var curID string
+	for rows.Next() {
 		var id, title, author, description, thumbnail string
 		var published int64
-		err := entries.Scan(&id, &title, &author, &description, &thumbnail, &published)
-		if err != nil{
+		var linkURL, linkType sql.NullString
+		err := rows.Scan(&id, &title, &author, &description, &thumbnail, &published, &linkURL, &linkType)
+		if err != nil {
 			log.Fatal(err)
 		}
-
-		links, err := db.Query("SELECT url, link_type FROM links WHERE entry_id = ?", id)
-		if err != nil{
-			log.Fatal(err)
-		}
-		defer links.Close()
-		en_links := []FeedieLink{}
-		for links.Next(){
-			var url, link_type string
-			err := links.Scan(&url, &link_type)
-			if err != nil{
-				log.Fatal(err)
+		if id != curID {
+			if cur != nil {
+				ret = append(ret, *cur)
 			}
-			en_links = append(en_links, FeedieLink{URL: url, Type: link_type})
-
+			cur = newEntry(title, author, published, description, thumbnail)
+			curID = id
 		}
-		en := newEntry(title, author, published, description, thumbnail)
-		en.Links = append(en.Links, en_links...)
-		ret = append(ret, *en)
+		if linkURL.Valid {
+			cur.Links = append(cur.Links, FeedieLink{URL: linkURL.String, Type: linkType.String})
+		}
 	}
-	return  ret
+	if cur != nil {
+		ret = append(ret, *cur)
+	}
+	return ret
 }
 
-func DBGetByTagTimeOrdered(tag string, isAsc timeOrder) []FeedieEntry{
-	ret := []FeedieEntry{}
+func DBGetAllTimeOrdered(isAsc timeOrder) []FeedieEntry{
 	query := `
-	SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published
-FROM entries AS e
-JOIN feeds AS f ON e.feed_id = f.id
-JOIN tag_members AS tm ON f.id = tm.feed_id
-JOIN tags AS t ON tm.tag_id = t.id
-WHERE t.name = ?
-ORDER BY e.published DESC;
-	`
+SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published,
+       l.url, l.link_type
+FROM entries e
+LEFT JOIN links l ON l.entry_id = e.id
+ORDER BY e.published DESC, e.id`
 	if isAsc{
 		query = strings.Replace(query, "DESC", "ASC", 1)
 	}
 	dbMu.RLock()
 	defer dbMu.RUnlock()
-	entries, err := db.Query(query, tag )
+	rows, err := db.Query(query)
 	if err != nil{
 		log.Fatal(err)
 	}
-	defer entries.Close()
-	for entries.Next() {
-		var id, title, author, description, thumbnail string
-		var published int64
-		err := entries.Scan(&id, &title, &author, &description, &thumbnail, &published)
-		if err != nil{
-			log.Fatal(err)
-		}
+	defer rows.Close()
+	return scanEntries(rows)
+}
 
-		links, err := db.Query("SELECT url, link_type FROM links WHERE entry_id = ?", id)
-		if err != nil{
-			log.Fatal(err)
-		}
-		defer links.Close()
-		en_links := []FeedieLink{}
-		for links.Next(){
-			var url, link_type string
-			err := links.Scan(&url, &link_type)
-			if err != nil{
-				log.Fatal(err)
-			}
-			en_links = append(en_links, FeedieLink{URL: url, Type: link_type})
-
-		}
-		en := newEntry(title, author, published, description, thumbnail)
-		en.Links = append(en.Links, en_links...)
-		ret = append(ret, *en)
+func DBGetByTagTimeOrdered(tag string, isAsc timeOrder) []FeedieEntry{
+	query := `
+SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published,
+       l.url, l.link_type
+FROM entries AS e
+JOIN feeds AS f ON e.feed_id = f.id
+JOIN tag_members AS tm ON f.id = tm.feed_id
+JOIN tags AS t ON tm.tag_id = t.id
+LEFT JOIN links l ON l.entry_id = e.id
+WHERE t.name = ?
+ORDER BY e.published DESC, e.id`
+	if isAsc{
+		query = strings.Replace(query, "DESC", "ASC", 1)
 	}
-	return  ret
+	dbMu.RLock()
+	defer dbMu.RUnlock()
+	rows, err := db.Query(query, tag)
+	if err != nil{
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	return scanEntries(rows)
 }
 
 func DBGetFeedByName(name string) FeedieFeed {
@@ -347,54 +328,26 @@ func DBGetFeedByName(name string) FeedieFeed {
 }
 
 func DBGetByFeedTimeOrdered(feed FeedieFeed, isAsc timeOrder) []FeedieEntry{
-	ret := []FeedieEntry{}
 	feed_id := GetHashString(feed.Url)
 	query := `
-	SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published
+SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published,
+       l.url, l.link_type
 FROM entries AS e
 JOIN feeds AS f ON e.feed_id = f.id
+LEFT JOIN links l ON l.entry_id = e.id
 WHERE f.id = ?
-ORDER BY e.published DESC;
-	`
+ORDER BY e.published DESC, e.id`
 	if isAsc{
 		query = strings.Replace(query, "DESC", "ASC", 1)
 	}
 	dbMu.RLock()
 	defer dbMu.RUnlock()
-	entries, err := db.Query(query, feed_id)
+	rows, err := db.Query(query, feed_id)
 	if err != nil{
 		log.Fatal(err)
 	}
-	defer entries.Close()
-	for entries.Next() {
-		var id, title, author, description, thumbnail string
-		var published int64
-		err := entries.Scan(&id, &title, &author, &description, &thumbnail, &published)
-		if err != nil{
-			log.Fatal(err)
-		}
-
-		links, err := db.Query("SELECT url, link_type FROM links WHERE entry_id = ?", id)
-		if err != nil{
-			log.Fatal(err)
-		}
-		defer links.Close()
-		en_links := []FeedieLink{}
-		for links.Next(){
-			var url, link_type string
-			err := links.Scan(&url, &link_type)
-			if err != nil{
-				log.Fatal(err)
-			}
-			en_links = append(en_links, FeedieLink{URL: url, Type: link_type})
-
-		}
-		en := newEntry(title, author, published, description, thumbnail)
-		en.Links = append(en.Links, en_links...)
-		ret = append(ret, *en)
-	}
-
-	return  ret
+	defer rows.Close()
+	return scanEntries(rows)
 }
 
 func DBGetFeeds(withEntries bool ) []FeedieFeed{

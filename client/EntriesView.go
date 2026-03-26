@@ -123,7 +123,7 @@ func initialEntriesModel( f func(FeedieConfig)[]list_entry, c FeedieConfig, prev
 func (m entriesModel) preloadThumbnails(preload int){
 	items := m.list.Items()
 	si := max(0, m.list.Index() - preload/2)
-	ei := min(si+preload, si+preload, len(items))
+	ei := min(si+preload, len(items))
 	urls := []string{}
 	for _, it := range items[si:ei]{
 		it := it.(list_entry)

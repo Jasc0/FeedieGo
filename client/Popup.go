@@ -176,7 +176,8 @@ func (m popUpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.values = []string{value}
 				err := m.action(m.config, m.values)
 				if err != nil{
-					log.Fatal(err)
+					log.Println(err)
+					return m.prevModel, tea.WindowSize()
 				}
 
 				return m.prevModel, m.end(value)

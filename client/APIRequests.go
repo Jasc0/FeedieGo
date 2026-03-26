@@ -170,7 +170,7 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 				tag_name := params[0]
 				feeds := params[1:]
 				resp, err := http.Get(fmt.Sprintf("%s%s/clear_members?tag_name=%s",
-					config.SERVER,config.PORT,tag_name)); if err != nil{
+					config.SERVER,config.PORT,url.QueryEscape(tag_name))); if err != nil{
 					log.Println(err)
 					return err
 				}
@@ -233,7 +233,7 @@ func getSelectOptions(config FeedieConfig) []list_source {
 		p.SrcFunc = getSrcFunc(p.SrcType, p.Title_field)
 		//used for prefetching key
 		p.Url = fmt.Sprintf("%s%s/get_entries?method=by_tag&value=%s",
-		config.SERVER, config.PORT, p.Title_field)
+		config.SERVER, config.PORT, url.QueryEscape(p.Title_field))
 		ret = append(ret, p)
 	}
 	resp.Body.Close()

@@ -146,7 +146,7 @@ func parseConfigFile(path string) FeedieConfig{
 	 s := lipgloss.NewStyle().
 	 Foreground(lipgloss.Color(fc.SelectFG)).
 	 Background(lipgloss.Color(fc.SelectBG))
-	 s.BorderForeground(lipgloss.Color(fc.SelectCursor))
+	 s = s.BorderForeground(lipgloss.Color(fc.SelectCursor))
 	 return s
  }
 

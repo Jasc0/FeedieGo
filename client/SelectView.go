@@ -189,11 +189,13 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		k := msg.String()
 		if in(k,m.config.Keys["cursorUp"]){
 			m.list.CursorUp()
+			m.preloadFeeds(PRELOAD_AMT)
 			return m, nil
 		}
 
 		if in(k,m.config.Keys["cursorDown"]){
 			m.list.CursorDown()
+			m.preloadFeeds(PRELOAD_AMT)
 			return m, nil
 		}
 
@@ -268,7 +270,6 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list = nl
 		return m, c
 	}
-	m.preloadFeeds(PRELOAD_AMT)
 	return m, nil
 }
 
@@ -304,7 +305,7 @@ func (m *selectModel) clearPreload(){
 }
 
 func getSelectKeys(fc FeedieConfig) func() []key.Binding{
-	selectCommands := []string{"addFeed", "addTag", "delete", "modTag", "refesh"}	
+	selectCommands := []string{"addFeed", "addTag", "delete", "modTag", "refresh"}	
 	ret := []key.Binding{}
 
 	for command, keys := range fc.Keys{
