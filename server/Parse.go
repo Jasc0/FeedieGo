@@ -22,6 +22,7 @@ func parser(url string) *FeedieFeed{
 	for _, item := range feed.Items {
 		new_entry := newEmptyEntry()
 		new_entry.Title = item.Title
+		new_entry.GUID = item.GUID
 
 		// Authors can be empty; and Author is a *gofeed.Person
 		if len(item.Authors) > 0 && item.Authors[0] != nil {

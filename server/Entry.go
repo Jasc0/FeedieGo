@@ -6,13 +6,17 @@ import "fmt"
 type FeedieEntry struct {
 	Title string
 	Author string
-	Published int64 
+	Published int64
 	Description string
 	Thumbnail string
 	Links []FeedieLink
+	GUID string
 }
 
 func (e FeedieEntry) getHashString() string{
+	if e.GUID != "" {
+		return e.GUID
+	}
 	return e.Title + e.Author + fmt.Sprintf("%d",e.Published)
 }
 
