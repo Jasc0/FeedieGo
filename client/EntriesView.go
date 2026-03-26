@@ -137,12 +137,13 @@ func (m entriesModel) Init() tea.Cmd {
 	m.ready = false
 	return nil
 }
-func (m entriesModel) Refresh() tea.Cmd {
+func (m entriesModel) Refresh() (entriesModel, tea.Cmd) {
 	var entries []list.Item
 	for _, en := range m.src(m.config){
 		entries = append(entries, en)
 	}
-	return m.list.SetItems(entries)
+	c := m.list.SetItems(entries)
+	return m, c
 }
 
 func getPaneWidth(window_width int) int{
@@ -204,7 +205,8 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cur := m.getSelectedEntry()
 	switch msg := msg.(type) {
 	case FeedieMsg:
-		return m, m.Refresh()
+		m, c := m.Refresh()
+		return m, c
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.list.SetSize(getPaneWidth(m.width),getPaneHeight(m.height, 1))

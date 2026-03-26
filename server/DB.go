@@ -40,6 +40,10 @@ func DBInit(path string) {
 	if err != nil{
 		log.Fatal(err)
 	}
+	_, err = db.Exec(`PRAGMA journal_mode=WAL`)
+	if err != nil{
+		log.Fatal(err)
+	}
 
 	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS feeds (
@@ -171,10 +175,48 @@ ON CONFLICT(id) DO UPDATE SET
 }
 
 func DBAddFeedWithEntries(feed FeedieFeed){
-	DBAddFeed(feed)
-	for _, e := range feed.Entries{
-		DBAddEntry(feed, e)
+	feed_id := GetHashString(feed.Url)
+
+	dbMu.Lock()
+	defer dbMu.Unlock()
+
+	tx, err := db.Begin()
+	if err != nil { log.Fatal(err) }
+
+	_, err = tx.Exec(`INSERT INTO feeds (id, title, url)
+VALUES (?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    title = excluded.title,
+    url = excluded.url;`, feed_id, feed.Title, feed.Url)
+	if err != nil { tx.Rollback(); log.Fatal(err) }
+
+	for _, entry := range feed.Entries {
+		entry_id := GetHashString(entry.getHashString())
+		_, err = tx.Exec(`INSERT INTO entries
+(id, feed_id, title, author, published, description, thumbnail)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    feed_id = excluded.feed_id,
+    title = excluded.title,
+    author = excluded.author,
+    published = excluded.published,
+    description = excluded.description,
+    thumbnail = excluded.thumbnail;`,
+			entry_id, feed_id, entry.Title, entry.Author, entry.Published, entry.Description, entry.Thumbnail)
+		if err != nil { tx.Rollback(); log.Fatal(err) }
+
+		for _, link := range entry.Links {
+			_, err = tx.Exec(`INSERT INTO links (id, url, entry_id, link_type)
+VALUES (?,?,?,?)
+ON CONFLICT(id) DO UPDATE SET
+    entry_id = excluded.entry_id,
+    link_type = excluded.link_type;`,
+				GetHashString(link.URL+entry_id), link.URL, entry_id, link.Type)
+			if err != nil { tx.Rollback(); log.Fatal(err) }
+		}
 	}
+
+	if err = tx.Commit(); err != nil { log.Fatal(err) }
 }
 
 func DBAddTag(tag_name string){
