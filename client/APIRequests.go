@@ -258,6 +258,34 @@ func getSelectOptions(config FeedieConfig) []list_source {
 	}
 	return ret
 }
+func getFeedsByTag(config FeedieConfig, tag string) []string{
+	type respFeed struct{
+		Title string
+		Url string
+	}
+	respFeeds := []respFeed{}
+	ret := []string{}
+	resp, err := http.Get(fmt.Sprintf("%s%s/get_feeds?method=by_tag&tag_name=%s",
+	config.SERVER,config.PORT,tag))
+	if err != nil{
+		log.Println(err)
+		return ret
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK{
+		log.Println("Bad StatusCode")
+		return ret
+
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&respFeeds); err != nil {
+		log.Fatal(err)
+	}
+	for _, f := range respFeeds{
+		ret = append(ret, f.Url)
+	}
+	return ret
+}
 
 func getModTagOptions(config FeedieConfig, tag string) []popUpListItem{
 	ret := []popUpListItem{}

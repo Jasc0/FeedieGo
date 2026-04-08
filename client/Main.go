@@ -20,17 +20,20 @@ type FeedieClientAction int
 const(
 	main_graphical FeedieClientAction = iota
 	add_feed
+	get_tags
 )
 
 var configPath string
 
-func parseArgs() (FeedieClientAction, *string){
+func parseArgs() (FeedieClientAction, []string){
 	if home, exists := os.LookupEnv("HOME"); exists{
 		configPath = fmt.Sprintf("%s/.config/feedie/conf.json", home)
 
 	} else{
 		log.Fatal("You don't have a set $HOME variable? What the hell are you running?")
 	}
+	target := main_graphical
+	args := []string{}
 	for i, arg := range os.Args{
 		switch(arg){
 		case "-c", "--config":
@@ -39,18 +42,24 @@ func parseArgs() (FeedieClientAction, *string){
 			continue
 		case "--add_feed":
 			if i+1 >= len(os.Args) {log.Fatal(errors.New("Expected value for --add_feed"))}
-			return add_feed, &os.Args[i+1]
+			target = add_feed
+			args = append(args, os.Args[i+1]) 
+		case "--tag":
+			if i+1 >= len(os.Args) {log.Fatal(errors.New("Expected value for --tag"))}
+			args = append(args, os.Args[i+1]) 
+		case "--get_tags":
+			target = get_tags
 		}
 	}
-	return main_graphical, nil
+	return target, args
 }
 
 func main() {
-	action, feed := parseArgs()
+	action, args := parseArgs()
 	config := parseConfigFile(configPath)
 	switch (action){
 	case main_graphical:
-		_ = feed
+		_ = args
 		// this is here because I don't want it to potentially mess up the
 		// image drawing, needing to access stdin/stdout
 		if config.getThumbnailBackend() == ueberzug{
@@ -68,7 +77,16 @@ func main() {
 			log.Fatal(err)
 		}
 	case add_feed:
-		getActionFunc(addFeed_t)(config, []string{*feed})
+		feed := args[0]
+		getActionFunc(addFeed_t)(config, []string{feed})
+		if len(args) > 1{
+			tag   := args[1]
+			aFArgs := []string{tag}
+			aFArgs = append(aFArgs, getFeedsByTag(config, tag)...)
+			aFArgs = append(aFArgs, feed)
+
+			getActionFunc(modTagMember_t)(config, aFArgs)
+		}
 	}
 }
 
