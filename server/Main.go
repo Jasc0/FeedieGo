@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -59,7 +60,12 @@ func main(){
 	args := os.Args
 	if len(args) >1 {
 		if args[1] == "migrate_add_link_id"{
-			migrate_add_link_id()	
+			migrate_add_link_id()
+			log.Println("Successful Migration")
+			return
+		}
+		if args[1] == "migrate_dedup_guid"{
+			migrate_dedup_guid()
 			log.Println("Successful Migration")
 			return
 		}
@@ -90,6 +96,59 @@ func refreshThread(timeInSeconds int64){
 		}
 		feedieServer.timeOfNextRefresh += timeInSeconds
 	}
+}
+
+func migrate_dedup_guid(){
+	type entryRow struct {
+		id        string
+		feed_id   string
+		title     string
+		author    string
+		published int64
+	}
+
+	dbMu.RLock()
+	rows, err := db.Query("SELECT id, feed_id, title, author, published FROM entries")
+	if err != nil { log.Fatal(err) }
+	var entries []entryRow
+	for rows.Next() {
+		var e entryRow
+		if err := rows.Scan(&e.id, &e.feed_id, &e.title, &e.author, &e.published); err != nil {
+			log.Fatal(err)
+		}
+		entries = append(entries, e)
+	}
+	rows.Close()
+	dbMu.RUnlock()
+
+	// Group by (feed_id, title, author, published)
+	type groupKey struct{ feed_id, title, author string; published int64 }
+	groups := map[groupKey][]entryRow{}
+	for _, e := range entries {
+		k := groupKey{e.feed_id, e.title, e.author, e.published}
+		groups[k] = append(groups[k], e)
+	}
+
+	// For each duplicate group, delete entries whose ID matches the old
+	// hash scheme (title+author+published). The GUID-based entry remains.
+	deleted := 0
+	for _, group := range groups {
+		if len(group) < 2 {
+			continue
+		}
+		for _, e := range group {
+			oldHash := GetHashString(e.title + e.author + fmt.Sprintf("%d", e.published))
+			if e.id == oldHash {
+				dbMu.Lock()
+				_, err := db.Exec("DELETE FROM entries WHERE id = ?", e.id)
+				dbMu.Unlock()
+				if err != nil { log.Fatal(err) }
+				log.Printf("Deleted old-hash duplicate: %s (title: %q)", e.id, e.title)
+				deleted++
+			}
+		}
+	}
+	log.Printf("Removed %d duplicate entries", deleted)
 }
 
 func migrate_add_link_id(){
