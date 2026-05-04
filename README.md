@@ -1,15 +1,8 @@
-# FeedieGo
+# Feedie
 
 A terminal RSS/Atom feed reader with a client-server architecture. The server fetches and stores feeds in a local SQLite database; the client is a TUI built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) that displays feeds, tags, and entries with optional thumbnail support.
 
-## Architecture
-
-```
-feedie-server   HTTP API + SQLite database + background feed refresh
-feedie-client   Terminal UI that talks to the server over HTTP
-```
-
-The two components are independent Go modules under `server/` and `client/`.
+<img src="https://jasco.website/projects/feedie/demo1.png" alt="Demo of Feedie" width=500>
 
 ## Features
 
@@ -98,9 +91,6 @@ feedie --add_feed <url>
 
 # Add a feed and immediately assign it to a tag
 feedie --add_feed <url> --tag <tag_name>
-
-# Print all tags (one per line)
-feedie --get_tags
 ```
 
 ## Default Keybindings
