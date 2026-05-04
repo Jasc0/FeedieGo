@@ -2,7 +2,7 @@
 
 A terminal RSS/Atom feed reader with a client-server architecture. The server fetches and stores feeds in a local SQLite database; the client is a TUI built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) that displays feeds, tags, and entries with optional thumbnail support.
 
-<img src="https://jasco.website/projects/feedie/demo1.png" alt="Demo of Feedie" width=100vw>
+<img src="https://jasco.website/projects/feedie/demo1.png" alt="Demo of Feedie" width=90%>
 
 ## Features
 
