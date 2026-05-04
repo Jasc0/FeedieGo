@@ -84,7 +84,7 @@ Key config fields:
 | `thumbnailbackend` | `kitty` | Image backend: `kitty`, `ueberzug`, or `""` to disable |
 | `thumbnailratio` | `0.4` | Fraction of the pane width used for thumbnails |
 | `thumbnailpath` | `/tmp/feedie-go` | Directory for cached thumbnails |
-| `thumbnailscaler` | `fit_contain` | Scaling mode for images |
+| `thumbnailscaler` | `fit_contain` | Scaling mode for images (only for Ueberzug backend)|
 | `linkcopycommand` | `xclip -i -selection clipboard` | Command used to yank links |
 | `defaultopener` | `xdg-open` | Fallback command for opening links |
 
