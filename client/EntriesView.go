@@ -245,7 +245,7 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else{
 						m.vp.Height = getPaneHeight(m.height, 1)
 					}
-					return m, nil
+					return m, m.paginationLogic()
 
 				} else{
 					m.vp.ScrollDown(1)
@@ -328,7 +328,7 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focusL{
 			nl, c := m.list.Update(msg)
 			m.list = nl
-			return m,c
+			return m, tea.Batch(c, m.paginationLogic())
 		} else{
 			nvp, c := m.vp.Update(msg)
 			m.vp = nvp
@@ -363,7 +363,7 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	} else{
 		m.vp.Height = getPaneHeight(m.height, 1)
 	}
-	return m, m.paginationLogic()
+	return m, nil 
 }
 
 
