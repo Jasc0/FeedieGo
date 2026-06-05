@@ -165,7 +165,7 @@ const (
 type list_source struct{
 	Title_field string `json:"Title"`
 	SrcType SourceType `json:"SrcType"`
-	SrcFunc func(FeedieConfig) []list_entry 
+	SrcFunc func(FeedieConfig, int) []list_entry 
 	Url string `json:"Url"`
 }
 func (i list_source) Title() string       { 

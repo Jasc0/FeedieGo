@@ -117,7 +117,7 @@ func (m selectModel) preloadFeeds(preload int){
 		}
 		if !ok{
 			go func(s list_source){
-				LEs := s.SrcFunc(m.config)
+				LEs := s.SrcFunc(m.config, 0)
 				preloadMu.Lock()
 				preloadMap[s.Url] = LEs
 				preloadMu.Unlock()

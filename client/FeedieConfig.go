@@ -74,6 +74,7 @@ func parseConfigFile(path string) FeedieConfig{
  type FeedieConfig struct{
 	 SERVER string `json:"server"` 
 	 PORT string`json:"port"` 
+	 EntryLimit int `json:"entrylimit"`
 	 BorderType string`json:"bordertype"` 
 	 FocusFG string`json:"focusfg"` 
 	 FocusBG string`json:"focusbg"` 
@@ -236,6 +237,7 @@ func parseConfigFile(path string) FeedieConfig{
 	 fc :=  FeedieConfig{
 		 SERVER: "http://localhost",
 		 PORT: ":2550",
+		 EntryLimit: 50,
 		 FocusBG: "#000000",
 		 FocusFG: "#f9e0a1",
 		 FocusBorderC: "#00ff00",
