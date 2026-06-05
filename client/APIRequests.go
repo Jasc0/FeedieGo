@@ -9,10 +9,11 @@ import (
 	"net/url"
 )
 
-func getAllFeedEntries(config FeedieConfig) []list_entry {
+func getAllFeedEntries(config FeedieConfig, offset int) []list_entry {
 	ret := []list_entry{}
 
-	resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=all",config.SERVER,config.PORT))
+	resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=all&limit=%d&offset=%d",
+		config.SERVER,config.PORT,config.EntryLimit, offset * config.EntryLimit))
 	if err != nil{
 		log.Println(err)
 		return ret
@@ -32,15 +33,16 @@ func getAllFeedEntries(config FeedieConfig) []list_entry {
 	return ret
 }
 
-func getSrcFunc(SrcType SourceType, protokey string) func(FeedieConfig) []list_entry {
+func getSrcFunc(SrcType SourceType, protokey string) func(FeedieConfig, int) []list_entry {
 	key := url.QueryEscape(protokey)
 
 	switch (SrcType){
 	case Tag:
-		return func (config FeedieConfig) []list_entry {
+		return func (config FeedieConfig, offset int) []list_entry {
 			ret := []list_entry{}
 
-			resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=by_tag&value=%s",config.SERVER,config.PORT,key))
+			resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=by_tag&value=%s&limit=%d&offset=%d",
+				config.SERVER,config.PORT,key,config.EntryLimit, offset * config.EntryLimit))
 			if err != nil{
 				log.Println(err)
 				return ret
@@ -58,9 +60,9 @@ func getSrcFunc(SrcType SourceType, protokey string) func(FeedieConfig) []list_e
 			return ret
 		}
 	case Feed:
-		return func (config FeedieConfig) []list_entry{
+		return func (config FeedieConfig, offset int) []list_entry{
 			ret := []list_entry{}
-			resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=by_feed&value=%s",config.SERVER,config.PORT,key)); if err != nil{
+			resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=by_feed&value=%s&limit=%d&offset=%d",config.SERVER,config.PORT,key,config.EntryLimit, offset * config.EntryLimit)); if err != nil{
 				log.Println(err)
 				return ret
 			}
@@ -77,7 +79,8 @@ func getSrcFunc(SrcType SourceType, protokey string) func(FeedieConfig) []list_e
 			return ret
 		}
 	}
-	return func( config FeedieConfig) []list_entry{
+	return func( config FeedieConfig, offset int) []list_entry{
+		_ = offset
 		return []list_entry{}
 	}
 }

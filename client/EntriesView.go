@@ -13,16 +13,16 @@ import (
 const PRELOAD_AMT = 5
 
 
-type entriesModel struct {
-	prevModel tea.Model
+type entriesModel struct { prevModel tea.Model
 	config FeedieConfig
-	src func(FeedieConfig)[]list_entry
+	src func(FeedieConfig, int)[]list_entry
 	width, height int
 	ready bool
 	focusL bool;
 	vp viewport.Model
 	list list.Model
 	thumbnail thumbnailManager
+	maxPageOffset int
 }
 
 func (m entriesModel) getSelectedEntry() list_entry {
@@ -51,7 +51,7 @@ func getEntryKeys(fc FeedieConfig) func() []key.Binding{
 	return func () []key.Binding {return ret}
 }
 
-func initialEntriesModel( f func(FeedieConfig)[]list_entry, c FeedieConfig, prev tea.Model, initial []list_entry) entriesModel {
+func initialEntriesModel( f func(FeedieConfig, int)[]list_entry, c FeedieConfig, prev tea.Model, initial []list_entry) entriesModel {
 	
 	m := entriesModel{
 		prevModel: prev,
@@ -110,7 +110,7 @@ func initialEntriesModel( f func(FeedieConfig)[]list_entry, c FeedieConfig, prev
 			entries = append(entries, en)
 		}
 	} else{
-		for _, en := range m.src(m.config){
+		for _, en := range m.src(m.config, 0){
 			entries = append(entries, en)
 		}
 	}
@@ -139,8 +139,10 @@ func (m entriesModel) Init() tea.Cmd {
 }
 func (m entriesModel) Refresh() (entriesModel, tea.Cmd) {
 	var entries []list.Item
-	for _, en := range m.src(m.config){
-		entries = append(entries, en)
+	for o := 0; o <= m.maxPageOffset; o += 1{
+		for _, en := range m.src(m.config, o){
+			entries = append(entries, en)
+		}
 	}
 	c := m.list.SetItems(entries)
 	return m, c
@@ -361,7 +363,7 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	} else{
 		m.vp.Height = getPaneHeight(m.height, 1)
 	}
-	return m,nil
+	return m, m.paginationLogic()
 }
 
 
@@ -380,4 +382,20 @@ func (m entriesModel) drawCurImage(){
 	} 
 	go m.preloadThumbnails(PRELOAD_AMT)
 
+}
+
+func (m *entriesModel) paginationLogic() tea.Cmd{
+	if m.list.Paginator.OnLastPage(){
+		curEnts := m.list.Items()
+		nextPageItems := m.src(m.config, m.maxPageOffset + 1)
+		if len(nextPageItems) == 0{
+			return nil
+		}
+		m.maxPageOffset += 1
+		for _, en := range nextPageItems{
+			curEnts = append(curEnts, en)
+		}
+		return m.list.SetItems(curEnts)
+	}
+	return nil
 }
