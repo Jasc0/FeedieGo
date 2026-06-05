@@ -303,19 +303,20 @@ func scanEntries(rows *sql.Rows) []FeedieEntry {
 	return ret
 }
 
-func DBGetAllTimeOrdered(isAsc timeOrder) []FeedieEntry{
+func DBGetAllTimeOrdered(isAsc timeOrder, limit, offset int) []FeedieEntry{
 	query := `
 SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published,
        l.url, l.link_type
 FROM entries e
 LEFT JOIN links l ON l.entry_id = e.id
-ORDER BY e.published DESC, e.id`
+ORDER BY e.published DESC, e.id
+LIMIT ? OFFSET ?`
 	if isAsc{
 		query = strings.Replace(query, "DESC", "ASC", 1)
 	}
 	dbMu.RLock()
 	defer dbMu.RUnlock()
-	rows, err := db.Query(query)
+	rows, err := db.Query(query, limit, offset)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -323,7 +324,7 @@ ORDER BY e.published DESC, e.id`
 	return scanEntries(rows)
 }
 
-func DBGetByTagTimeOrdered(tag string, isAsc timeOrder) []FeedieEntry{
+func DBGetByTagTimeOrdered(tag string, isAsc timeOrder, limit, offset int) []FeedieEntry{
 	query := `
 SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published,
        l.url, l.link_type
@@ -333,13 +334,14 @@ JOIN tag_members AS tm ON f.id = tm.feed_id
 JOIN tags AS t ON tm.tag_id = t.id
 LEFT JOIN links l ON l.entry_id = e.id
 WHERE t.name = ?
-ORDER BY e.published DESC, e.id`
+ORDER BY e.published DESC, e.id 
+LIMIT ? OFFSET ?`
 	if isAsc{
 		query = strings.Replace(query, "DESC", "ASC", 1)
 	}
 	dbMu.RLock()
 	defer dbMu.RUnlock()
-	rows, err := db.Query(query, tag)
+	rows, err := db.Query(query, tag, limit, offset)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -369,7 +371,7 @@ func DBGetFeedByName(name string) FeedieFeed {
 
 }
 
-func DBGetByFeedTimeOrdered(feed FeedieFeed, isAsc timeOrder) []FeedieEntry{
+func DBGetByFeedTimeOrdered(feed FeedieFeed, isAsc timeOrder, limit, offset int) []FeedieEntry{
 	feed_id := GetHashString(feed.Url)
 	query := `
 SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published,
@@ -378,13 +380,14 @@ FROM entries AS e
 JOIN feeds AS f ON e.feed_id = f.id
 LEFT JOIN links l ON l.entry_id = e.id
 WHERE f.id = ?
-ORDER BY e.published DESC, e.id`
+ORDER BY e.published DESC, e.id
+LIMIT ? OFFSET ?`
 	if isAsc{
 		query = strings.Replace(query, "DESC", "ASC", 1)
 	}
 	dbMu.RLock()
 	defer dbMu.RUnlock()
-	rows, err := db.Query(query, feed_id)
+	rows, err := db.Query(query, feed_id, limit, offset)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -413,7 +416,7 @@ func DBGetFeeds(withEntries bool ) []FeedieFeed{
 		}
 		feed := FeedieFeed{Title: title, Url: url}
 		if withEntries{
-			ents := DBGetByFeedTimeOrdered(feed, DESC);
+			ents := DBGetByFeedTimeOrdered(feed, DESC, -1, 0);
 			feed.Entries = ents
 		}
 		ret = append(ret, feed)

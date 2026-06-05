@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func FeedieStartServer(port int){
@@ -32,13 +33,22 @@ func getEntriesHandler (w http.ResponseWriter, r *http.Request) {
 	order := timeOrder(DESC)
 	method := r.URL.Query().Get("method")
 	value := r.URL.Query().Get("value")
+
+	limitStr := r.URL.Query().Get("limit")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil{limit = -1}
+
+	offsetStr := r.URL.Query().Get("offset")
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil{offset = 0}
+
 	if r.URL.Query().Has("rev"){ order = ASC}
 
 	var data []FeedieEntry
 	switch(method){
 	case "all":
 		log.Printf("serving /get_entries all feeds\n")
-		data = DBGetAllTimeOrdered(order)
+		data = DBGetAllTimeOrdered(order, limit, offset)
 
 	case "by_tag":
 		if value == ""{
@@ -47,7 +57,7 @@ func getEntriesHandler (w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("serving /get_entries tag=%s\n", value)
-		data = DBGetByTagTimeOrdered(value, order)
+		data = DBGetByTagTimeOrdered(value, order, limit, offset)
 
 
 
@@ -58,7 +68,7 @@ func getEntriesHandler (w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("serving /get_entries feed=%s\n", value)
-		data = DBGetByFeedTimeOrdered(DBGetFeedByName(value), order)
+		data = DBGetByFeedTimeOrdered(DBGetFeedByName(value), order, limit, offset)
 
 	default:
 		log.Printf("error serving /get_entries invalid method=%s", method)
