@@ -13,6 +13,7 @@ A terminal RSS/Atom feed reader with a client-server architecture. The server fe
 - Configurable keybindings and color scheme
 - Link opening by URL pattern or MIME type
 - Link yanking to clipboard
+- Paginated entry loading — additional pages are fetched automatically as you scroll
 - Background feed refresh (default every ~2.5 hours)
 
 ## Requirements
@@ -74,6 +75,7 @@ Key config fields:
 |---|---|---|
 | `server` | `http://localhost` | Server address |
 | `port` | `:2550` | Server port |
+| `entrylimit` | `50` | Number of entries fetched per page; more are loaded automatically as you scroll |
 | `thumbnailbackend` | `kitty` | Image backend: `kitty`, `ueberzug`, or `""` to disable |
 | `thumbnailratio` | `0.4` | Fraction of the pane width used for thumbnails |
 | `thumbnailpath` | `/tmp/feedie-go` | Directory for cached thumbnails |

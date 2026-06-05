@@ -20,16 +20,16 @@ func parser(url string) *FeedieFeed{
 	}
 	var items []FeedieEntry
 	for _, item := range feed.Items {
-		new_entry := newEmptyEntry()
-		new_entry.Title = item.Title
-		new_entry.GUID = item.GUID
+		entry := newEmptyEntry()
+		entry.Title = item.Title
+		entry.GUID = item.GUID
 
 		// Authors can be empty; and Author is a *gofeed.Person
 		if len(item.Authors) > 0 && item.Authors[0] != nil {
-			new_entry.Author = item.Authors[0].Name
+			entry.Author = item.Authors[0].Name
 		}
-		if len(new_entry.Author) == 0{
-			new_entry.Author = feed.Title
+		if len(entry.Author) == 0{
+			entry.Author = feed.Title
 		}
 
 		pubtime, err := dateparse.ParseAny(item.Published)
@@ -46,40 +46,40 @@ func parser(url string) *FeedieFeed{
 				}
 			}
 		}
-		new_entry.Published = int64(pubtime.Unix())
+		entry.Published = int64(pubtime.Unix())
 
-		new_entry.Description = item.Description
-		if len(new_entry.Description) < len(item.Content){
-			new_entry.Description = item.Content
+		entry.Description = item.Description
+		if len(entry.Description) < len(item.Content){
+			entry.Description = item.Content
 		}
 
 		if item.Image != nil{
-		new_entry.Thumbnail = item.Image.URL
+		entry.Thumbnail = item.Image.URL
 		}
 
 		for _, l := range item.Links{
 			fl := FeedieLink{URL: l, Type: "text/html"}
-			new_entry.Links = append(new_entry.Links, fl)
+			entry.Links = append(entry.Links, fl)
 		}
 		
 		for _, enc := range item.Enclosures{
 			fl := FeedieLink{URL: enc.URL, Type: enc.Type}
-			new_entry.Links = append(new_entry.Links, fl)
+			entry.Links = append(entry.Links, fl)
 		}
 
 
 		if item.ITunesExt != nil{
-			parseItunes(item,feed,new_entry)
+			parseItunes(item,feed,entry)
 		}
 		if item.Extensions != nil{
-			parseExtensions(item,feed,new_entry)
+			parseExtensions(item,feed,entry)
 		}
 
-		items = append(items, *new_entry)
+		items = append(items, *entry)
 
 	}
-	new_feed := newFeed(feed.Title, url, items)
-	return new_feed
+	parsedFeed := newFeed(feed.Title, url, items)
+	return parsedFeed
 	//for _, i := range items{
 	//	fmt.Printf("Title: %s\nAuthor: %s\npub: %d\nthumbnail: %s\nLinks: %v\n description: %s\n", i.Title, i.Author, i.Published, i.Thumbnail, i.Links, i.Description)
 	//}

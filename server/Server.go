@@ -93,18 +93,20 @@ func getFeedsHandler (w http.ResponseWriter, r *http.Request) {
 	}
 	
 	var data []FeedieFeed
-	method :=r.URL.Query().Get("method")
-	with_entries := false
-	if r.URL.Query().Has("with_entries"){with_entries = true}
-	switch(method){
+	method := r.URL.Query().Get("method")
+	withEntries := false
+	if r.URL.Query().Has("with_entries") {
+		withEntries = true
+	}
+	switch method {
 	case "all":
 		log.Printf("serving /get_feeds for all feeds\n")
-		data = DBGetFeeds(with_entries)
+		data = DBGetFeeds(withEntries)
 	case "by_tag":
-		tag_name := r.URL.Query().Get("tag_name")
+		tagName := r.URL.Query().Get("tag_name")
 		inverted := r.URL.Query().Has("inverted")
-		log.Printf("serving /get_feeds for tag=%s\n", tag_name)
-		data = DBGetFeedsByTag(tag_name, inverted)
+		log.Printf("serving /get_feeds for tag=%s\n", tagName)
+		data = DBGetFeedsByTag(tagName, inverted)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -250,23 +252,27 @@ func clearTagHandler (w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func AddTagMemberHandler (w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet{
+func AddTagMemberHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	tag_name := r.URL.Query().Get("tag_name")
-	feed_url := r.URL.Query().Get("feed_url")
-	if tag_name == "" || feed_url == ""{
+	tagName := r.URL.Query().Get("tag_name")
+	feedURL := r.URL.Query().Get("feed_url")
+	if tagName == "" || feedURL == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		if tag_name == ""{log.Printf("error serving /add_member tag_name value empty") }
-		if feed_url == ""{log.Printf("error serving /add_member feed_url value empty") }
+		if tagName == "" {
+			log.Printf("error serving /add_member tag_name value empty")
+		}
+		if feedURL == "" {
+			log.Printf("error serving /add_member feed_url value empty")
+		}
 		return
 	}
 
-	log.Printf("serving /add_member, tag_name=%s feed_url=%s\n", tag_name, feed_url)
-	DBAddMembership(tag_name, feed_url)
+	log.Printf("serving /add_member, tag_name=%s feed_url=%s\n", tagName, feedURL)
+	DBAddMembership(tagName, feedURL)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

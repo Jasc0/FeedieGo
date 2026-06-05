@@ -12,15 +12,17 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 )
-const DEFAULT_H = 30
-const DEFAULT_W = 30
-var CELL_W, CELL_H = 8.0, 16.0
+const defaultH = 30
+const defaultW = 30
+
+var cellW, cellH = 8.0, 16.0
 
 type FeedieClientAction int
-const(
-	main_graphical FeedieClientAction = iota
-	add_feed
-	get_tags
+
+const (
+	actionGraphical FeedieClientAction = iota
+	actionAddFeed
+	actionGetTags
 )
 
 var configPath string
@@ -32,7 +34,7 @@ func parseArgs() (FeedieClientAction, []string){
 	} else{
 		log.Fatal("You don't have a set $HOME variable? What the hell are you running?")
 	}
-	target := main_graphical
+	target := actionGraphical
 	args := []string{}
 	for i, arg := range os.Args{
 		switch(arg){
@@ -42,13 +44,13 @@ func parseArgs() (FeedieClientAction, []string){
 			continue
 		case "--add_feed":
 			if i+1 >= len(os.Args) {log.Fatal(errors.New("Expected value for --add_feed"))}
-			target = add_feed
+			target = actionAddFeed
 			args = append(args, os.Args[i+1]) 
 		case "--tag":
 			if i+1 >= len(os.Args) {log.Fatal(errors.New("Expected value for --tag"))}
 			args = append(args, os.Args[i+1]) 
 		case "--get_tags":
-			target = get_tags
+			target = actionGetTags
 		}
 	}
 	return target, args
@@ -57,34 +59,32 @@ func parseArgs() (FeedieClientAction, []string){
 func main() {
 	action, args := parseArgs()
 	config := parseConfigFile(configPath)
-	switch (action){
-	case main_graphical:
+	switch action {
+	case actionGraphical:
 		_ = args
 		// this is here because I don't want it to potentially mess up the
 		// image drawing, needing to access stdin/stdout
-		if config.getThumbnailBackend() == ueberzug{
+		if config.getThumbnailBackend() == ueberzug {
 			var err error
-			CELL_W, CELL_H, err = GetTerminalCellSize()
-			if err != nil{
-				CELL_W = 8.0
-				CELL_H = 16.0
+			cellW, cellH, err = GetTerminalCellSize()
+			if err != nil {
+				cellW = 8.0
+				cellH = 16.0
 			}
-
 		}
 
 		p := tea.NewProgram(initialSelectModel(getSelectOptions, config), tea.WithAltScreen())
 		if _, err := p.Run(); err != nil {
 			log.Fatal(err)
 		}
-	case add_feed:
+	case actionAddFeed:
 		feed := args[0]
 		getActionFunc(addFeed_t)(config, []string{feed})
-		if len(args) > 1{
-			tag   := args[1]
+		if len(args) > 1 {
+			tag    := args[1]
 			aFArgs := []string{tag}
 			aFArgs = append(aFArgs, getFeedsByTag(config, tag)...)
 			aFArgs = append(aFArgs, feed)
-
 			getActionFunc(modTagMember_t)(config, aFArgs)
 		}
 	}

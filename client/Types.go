@@ -26,8 +26,8 @@ func stripZWC(str string) string{
 	return s
 
 }
-func in(k string, match_to[]string) bool{
-	return slices.Contains(match_to, k)
+func in(k string, matchTo []string) bool {
+	return slices.Contains(matchTo, k)
 }
 
 type FMsgType int 

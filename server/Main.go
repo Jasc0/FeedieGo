@@ -59,13 +59,13 @@ func main(){
 	DBInit(feedieServer.dbFilePath)
 	args := os.Args
 	if len(args) >1 {
-		if args[1] == "migrate_add_link_id"{
-			migrate_add_link_id()
+		if args[1] == "migrate_add_link_id" {
+			migrateAddLinkID()
 			log.Println("Successful Migration")
 			return
 		}
-		if args[1] == "migrate_dedup_guid"{
-			migrate_dedup_guid()
+		if args[1] == "migrate_dedup_guid" {
+			migrateDedupGUID()
 			log.Println("Successful Migration")
 			return
 		}
@@ -98,7 +98,7 @@ func refreshThread(timeInSeconds int64){
 	}
 }
 
-func migrate_dedup_guid(){
+func migrateDedupGUID(){
 	type entryRow struct {
 		id        string
 		feed_id   string
@@ -151,7 +151,7 @@ func migrate_dedup_guid(){
 	log.Printf("Removed %d duplicate entries", deleted)
 }
 
-func migrate_add_link_id(){
+func migrateAddLinkID(){
 	DBExecuteSQL("ALTER TABLE links RENAME TO links_old;", []any{})
 	DBExecuteSQL(`CREATE TABLE IF NOT EXISTS links (
     id TEXT PRIMARY KEY,

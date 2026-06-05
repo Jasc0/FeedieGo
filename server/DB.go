@@ -219,8 +219,8 @@ ON CONFLICT(id) DO UPDATE SET
 	if err = tx.Commit(); err != nil { log.Fatal(err) }
 }
 
-func DBAddTag(tag_name string){
-	tag_id := GetHashString(tag_name)
+func DBAddTag(tagName string) {
+	tagID := GetHashString(tagName)
 
 	statement := `INSERT INTO tags
 	(id, name)
@@ -230,19 +230,19 @@ func DBAddTag(tag_name string){
 
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(statement,tag_id,tag_name)
-	if err != nil{
+	_, err = db.Exec(statement, tagID, tagName)
+	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func DBAddFeedToTag(feed FeedieFeed, tag string){
-	var feed_id string
-	var tag_id string
+func DBAddFeedToTag(feed FeedieFeed, tag string) {
+	var feedID string
+	var tagID string
 
 	dbMu.RLock()
-	feedErr := db.QueryRow("SELECT id FROM feeds WHERE title = ? AND url = ?", feed.Title, feed.Url).Scan(&feed_id)
-	tagErr  := db.QueryRow("SELECT id FROM tags WHERE name = ?", tag).Scan(&tag_id)
+	feedErr := db.QueryRow("SELECT id FROM feeds WHERE title = ? AND url = ?", feed.Title, feed.Url).Scan(&feedID)
+	tagErr := db.QueryRow("SELECT id FROM tags WHERE name = ?", tag).Scan(&tagID)
 	dbMu.RUnlock()
 
 	if feedErr != nil {
@@ -266,8 +266,8 @@ func DBAddFeedToTag(feed FeedieFeed, tag string){
 	defer dbMu.Unlock()
 	_, err = db.Exec(`INSERT INTO tag_members
 	(tag_id, feed_id)
-	VALUES (?,?);`, tag_id, feed_id)
-	if err != nil{
+	VALUES (?,?);`, tagID, feedID)
+	if err != nil {
 		log.Fatal(err)
 	}
 }
@@ -371,8 +371,8 @@ func DBGetFeedByName(name string) FeedieFeed {
 
 }
 
-func DBGetByFeedTimeOrdered(feed FeedieFeed, isAsc timeOrder, limit, offset int) []FeedieEntry{
-	feed_id := GetHashString(feed.Url)
+func DBGetByFeedTimeOrdered(feed FeedieFeed, isAsc timeOrder, limit, offset int) []FeedieEntry {
+	feedID := GetHashString(feed.Url)
 	query := `
 SELECT e.id, e.title, e.author, e.description, e.thumbnail, e.published,
        l.url, l.link_type
@@ -387,7 +387,7 @@ LIMIT ? OFFSET ?`
 	}
 	dbMu.RLock()
 	defer dbMu.RUnlock()
-	rows, err := db.Query(query, feed_id, limit, offset)
+	rows, err := db.Query(query, feedID, limit, offset)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -457,42 +457,42 @@ func DBDelTag(tag string) {
 	}
 }
 
-func DBDelFeed(feed_url string) {
+func DBDelFeed(feedURL string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	id := GetHashString(feed_url)
+	id := GetHashString(feedURL)
 	_, err = db.Exec(`
 	DELETE FROM feeds WHERE id = ?`, id)
 	if err != nil{
 		log.Fatal(err)
 	}
 }
-func DBClearMembersTag(tag_name string){
+func DBClearMembersTag(tagName string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
 	_, err = db.Exec(`DELETE FROM tag_members
 	WHERE tag_id IN (
 		SELECT id FROM tags WHERE name = ?
 	);
-	`, tag_name)
+	`, tagName)
 	if err != nil{
 		log.Fatal(err)
 	}
 }
-func DBAddMembership(tag_name, feed_url string){
+func DBAddMembership(tagName, feedURL string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
 	_, err = db.Exec(`INSERT INTO tag_members (tag_id, feed_id)
 	VALUES (
 		(SELECT id FROM tags WHERE name = ? LIMIT 1),
 		(SELECT id FROM feeds WHERE url = ? LIMIT 1)
-	);`, tag_name, feed_url)
+	);`, tagName, feedURL)
 	if err != nil{
 		log.Fatal(err)
 	}
 }
 // inverted refers to the query being "inverted" i.e. all feeds not in tag
-func DBGetFeedsByTag(tag_name string, inverted bool) []FeedieFeed{
+func DBGetFeedsByTag(tagName string, inverted bool) []FeedieFeed {
 	dbMu.RLock()
 	defer dbMu.RUnlock()
 	ret := []FeedieFeed{}
@@ -516,7 +516,7 @@ func DBGetFeedsByTag(tag_name string, inverted bool) []FeedieFeed{
 		WHERE t.name = ?;
 		`
 	}
-	feeds, err := db.Query(query, tag_name)
+	feeds, err := db.Query(query, tagName)
 	if err != nil{
 		log.Fatal(err)
 	}

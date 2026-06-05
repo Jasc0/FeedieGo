@@ -10,77 +10,73 @@ import (
 )
 
 func getAllFeedEntries(config FeedieConfig, offset int) []list_entry {
-	ret := []list_entry{}
+	entries := []list_entry{}
 
 	resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=all&limit=%d&offset=%d",
-		config.SERVER,config.PORT,config.EntryLimit, offset * config.EntryLimit))
-	if err != nil{
+		config.SERVER, config.PORT, config.EntryLimit, offset*config.EntryLimit))
+	if err != nil {
 		log.Println(err)
-		return ret
+		return entries
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK{
+	if resp.StatusCode != http.StatusOK {
 		log.Println("Bad StatusCode")
-		return ret
-
+		return entries
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
 		log.Fatal(err)
 	}
 
-	return ret
+	return entries
 }
 
-func getSrcFunc(SrcType SourceType, protokey string) func(FeedieConfig, int) []list_entry {
-	key := url.QueryEscape(protokey)
+func getSrcFunc(srcType SourceType, rawKey string) func(FeedieConfig, int) []list_entry {
+	escapedKey := url.QueryEscape(rawKey)
 
-	switch (SrcType){
+	switch srcType {
 	case Tag:
-		return func (config FeedieConfig, offset int) []list_entry {
-			ret := []list_entry{}
-
+		return func(config FeedieConfig, offset int) []list_entry {
+			entries := []list_entry{}
 			resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=by_tag&value=%s&limit=%d&offset=%d",
-				config.SERVER,config.PORT,key,config.EntryLimit, offset * config.EntryLimit))
-			if err != nil{
+				config.SERVER, config.PORT, escapedKey, config.EntryLimit, offset*config.EntryLimit))
+			if err != nil {
 				log.Println(err)
-				return ret
+				return entries
 			}
 			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK{
+			if resp.StatusCode != http.StatusOK {
 				log.Println("Bad StatusCode")
-				return ret
+				return entries
 			}
-
-			if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
+			if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
 				log.Fatal(err)
 			}
-			return ret
+			return entries
 		}
 	case Feed:
-		return func (config FeedieConfig, offset int) []list_entry{
-			ret := []list_entry{}
-			resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=by_feed&value=%s&limit=%d&offset=%d",config.SERVER,config.PORT,key,config.EntryLimit, offset * config.EntryLimit)); if err != nil{
+		return func(config FeedieConfig, offset int) []list_entry {
+			entries := []list_entry{}
+			resp, err := http.Get(fmt.Sprintf("%s%s/get_entries?method=by_feed&value=%s&limit=%d&offset=%d",
+				config.SERVER, config.PORT, escapedKey, config.EntryLimit, offset*config.EntryLimit))
+			if err != nil {
 				log.Println(err)
-				return ret
+				return entries
 			}
 			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK{
+			if resp.StatusCode != http.StatusOK {
 				log.Println("Bad StatusCode", resp.StatusCode)
-				return ret
+				return entries
 			}
-
-			if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil {
+			if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
 				log.Fatal(err)
 			}
-			return ret
+			return entries
 		}
 	}
-	return func( config FeedieConfig, offset int) []list_entry{
-		_ = offset
+	return func(config FeedieConfig, offset int) []list_entry {
+		_, _ = config, offset
 		return []list_entry{}
 	}
 }
@@ -227,11 +223,11 @@ func getSelectOptions(config FeedieConfig) []list_source {
 		return ret
 
 	}
-	var peice []list_source
-	if err := json.NewDecoder(resp.Body).Decode(&peice); err != nil {
+	var piece []list_source
+	if err := json.NewDecoder(resp.Body).Decode(&piece); err != nil {
 		log.Fatal(err)
 	}
-	for _, p := range peice{
+	for _, p := range piece{
 		p.SrcType = Tag
 		p.SrcFunc = getSrcFunc(p.SrcType, p.Title_field)
 		//used for prefetching key
@@ -251,10 +247,10 @@ func getSelectOptions(config FeedieConfig) []list_source {
 		log.Println("Bad StatusCode")
 		return ret
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&peice); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&piece); err != nil {
 		log.Fatal(err)
 	}
-	for _, p := range peice{
+	for _, p := range piece{
 		p.SrcType = Feed
 		p.SrcFunc = getSrcFunc(p.SrcType, p.Title_field)
 		ret = append(ret, p)
@@ -305,11 +301,11 @@ func getModTagOptions(config FeedieConfig, tag string) []popUpListItem{
 		return ret
 
 	}
-	var peice []popUpListItem
-	if err := json.NewDecoder(resp.Body).Decode(&peice); err != nil {
+	var piece []popUpListItem
+	if err := json.NewDecoder(resp.Body).Decode(&piece); err != nil {
 		log.Fatal(err)
 	}
-	for _, p := range peice{
+	for _, p := range piece{
 		p.pu_selected = true
 		ret = append(ret, p)
 	}
@@ -328,10 +324,10 @@ func getModTagOptions(config FeedieConfig, tag string) []popUpListItem{
 		return ret
 
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&peice); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&piece); err != nil {
 		log.Fatal(err)
 	}
-	for _, p := range peice{
+	for _, p := range piece{
 		p.pu_selected = false
 		ret = append(ret, p)
 	}

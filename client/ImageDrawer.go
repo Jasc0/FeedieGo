@@ -29,7 +29,7 @@ const(
 var ImageMapMutex sync.Mutex
 
 type thumbnailManager struct{
-	url_to_path map[string] string
+	urlToPath map[string] string
 	current string
 	showing bool
 	enabled bool
@@ -50,7 +50,7 @@ func initThumbnailManager(config FeedieConfig) thumbnailManager{
        log.Fatal("Error checking directory:", err)
    } 	
 	tm := thumbnailManager{
-		url_to_path: make(map[string]string),
+		urlToPath: make(map[string]string),
 		current: "",
 		showing: false,
 		enabled: true,
@@ -75,17 +75,17 @@ func (tm thumbnailManager) preloadImages(urls []string){
 	ImageMapMutex.Lock()
 	defer ImageMapMutex.Unlock()
 	for _, u := range urls{
-		_, ok := tm.url_to_path[u]
+		_, ok := tm.urlToPath[u]
 		if !ok{
-			desired_path := fmt.Sprintf("%s/%s",tm.directory,GetHashString(u))
-			_, err := os.Stat(desired_path)
+			desiredPath := fmt.Sprintf("%s/%s",tm.directory,GetHashString(u))
+			_, err := os.Stat(desiredPath)
 			if err == nil {
-				tm.url_to_path[u] = desired_path
+				tm.urlToPath[u] = desiredPath
 				continue
 			}
 
-			if download_file(u,desired_path){
-				tm.url_to_path[u] = desired_path
+			if downloadFile(u,desiredPath){
+				tm.urlToPath[u] = desiredPath
 			}
 		}
 		
@@ -98,21 +98,21 @@ func (tm thumbnailManager) drawImage (x, y, width, height int, url string) bool{
 	}
 	// download thumbnail and store it in map
 	ImageMapMutex.Lock()
-	path, ok := tm.url_to_path[url]
+	path, ok := tm.urlToPath[url]
 	ImageMapMutex.Unlock()
 	if !ok{
-		desired_path := fmt.Sprintf("%s/%s",tm.directory,GetHashString(url))
-		_, err := os.Stat(desired_path)
+		desiredPath := fmt.Sprintf("%s/%s",tm.directory,GetHashString(url))
+		_, err := os.Stat(desiredPath)
 		if err == nil {
 			ImageMapMutex.Lock()
-			tm.url_to_path[url] = desired_path
+			tm.urlToPath[url] = desiredPath
 			ImageMapMutex.Unlock()
 		} else{
-			if download_file(url,desired_path){
+			if downloadFile(url,desiredPath){
 				ImageMapMutex.Lock()
-				tm.url_to_path[url] = desired_path
+				tm.urlToPath[url] = desiredPath
 				ImageMapMutex.Unlock()
-				path = desired_path
+				path = desiredPath
 			}
 		}
 	}
@@ -158,7 +158,7 @@ func (tm thumbnailManager) clear (){
 	}
 }
 
-func download_file (url string, filepath string) bool{
+func downloadFile (url string, filepath string) bool{
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -228,7 +228,7 @@ func (uzc *ueberzugClient)Show(x, y, width, height int, path string){
 	if err != nil || in(uzc.scaler, []string{"distort","crop"}){
 		XOffset, YOffset = 0, 0
 	} else{
-		CELL_R := CELL_W/CELL_H
+		CELL_R := cellW/cellH
 		XOffset = max(0, width/2 - int(IAR*float64(height)*1/CELL_R)/2)
 		YOffset = max(0,int(float64(height)/(2*CELL_R) - float64(width)/(2*IAR)))
 	}
