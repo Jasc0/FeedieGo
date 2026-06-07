@@ -105,7 +105,7 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 
 				if resp.StatusCode != http.StatusOK{
 					log.Println("Bad StatusCode", resp.StatusCode)
-					return errors.New("invalid feed url: %s"+ params[0])
+					return fmt.Errorf("invalid feed url: %s", params[0])
 				}
 
 				return nil
@@ -123,7 +123,7 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 
 				if resp.StatusCode != http.StatusOK{
 					log.Println("Bad StatusCode", resp.StatusCode)
-					return errors.New("invalid feed url: %s"+ params[0])
+					return fmt.Errorf("invalid feed url: %s", params[0])
 				}
 
 				return nil
@@ -141,7 +141,7 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 
 				if resp.StatusCode != http.StatusOK{
 					log.Println("Bad StatusCode", resp.StatusCode)
-					return errors.New("invalid tag: %s"+ params[0])
+					return fmt.Errorf("invalid tag: %s", params[0])
 				}
 
 				return nil
@@ -159,7 +159,7 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 
 				if resp.StatusCode != http.StatusOK{
 					log.Println("Bad StatusCode", resp.StatusCode)
-					return errors.New("invalid tag: %s"+ params[0])
+					return fmt.Errorf("invalid tag: %s", params[0])
 				}
 
 				return nil
@@ -177,15 +177,13 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 
 				if resp.StatusCode != http.StatusOK{
 					log.Println("Bad StatusCode", resp.StatusCode)
-					return errors.New("invalid tag: %s"+ params[0])
+					return fmt.Errorf("invalid tag: %s", params[0])
 				}
-
-				resp.Body.Close()
 
 				for _, f := range feeds{
 
 					resp, err := http.Get(fmt.Sprintf("%s%s/add_member?tag_name=%s&feed_url=%s",
-					config.SERVER,config.PORT,tag_name,url.QueryEscape(f))); if err != nil{
+					config.SERVER,config.PORT,url.QueryEscape(tag_name),url.QueryEscape(f))); if err != nil{
 						log.Println(err)
 						return err
 					}
@@ -193,7 +191,7 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 
 					if resp.StatusCode != http.StatusOK{
 						log.Println("Bad StatusCode", resp.StatusCode)
-						return errors.New("invalid tag: %s"+ params[0])
+						return fmt.Errorf("invalid tag: %s", params[0])
 					}
 				} 
 
@@ -235,7 +233,6 @@ func getSelectOptions(config FeedieConfig) []list_source {
 		config.SERVER, config.PORT, url.QueryEscape(p.Title_field))
 		ret = append(ret, p)
 	}
-	resp.Body.Close()
 	resp, err = http.Get(fmt.Sprintf("%s%s/get_feeds?method=all",config.SERVER,config.PORT))
 	if err != nil{
 		log.Println(err)
@@ -265,7 +262,7 @@ func getFeedsByTag(config FeedieConfig, tag string) []string{
 	respFeeds := []respFeed{}
 	ret := []string{}
 	resp, err := http.Get(fmt.Sprintf("%s%s/get_feeds?method=by_tag&tag_name=%s",
-	config.SERVER,config.PORT,tag))
+	config.SERVER,config.PORT,url.QueryEscape(tag)))
 	if err != nil{
 		log.Println(err)
 		return ret
@@ -289,7 +286,7 @@ func getFeedsByTag(config FeedieConfig, tag string) []string{
 func getModTagOptions(config FeedieConfig, tag string) []popUpListItem{
 	ret := []popUpListItem{}
 	resp, err := http.Get(fmt.Sprintf("%s%s/get_feeds?method=by_tag&tag_name=%s",
-	config.SERVER,config.PORT,tag))
+	config.SERVER,config.PORT,url.QueryEscape(tag)))
 	if err != nil{
 		log.Println(err)
 		return ret
@@ -309,10 +306,9 @@ func getModTagOptions(config FeedieConfig, tag string) []popUpListItem{
 		p.pu_selected = true
 		ret = append(ret, p)
 	}
-	resp.Body.Close()
 
 	resp, err = http.Get(fmt.Sprintf("%s%s/get_feeds?method=by_tag&tag_name=%s&inverted=true",
-	config.SERVER,config.PORT,tag))
+	config.SERVER,config.PORT,url.QueryEscape(tag)))
 	if err != nil{
 		log.Println(err)
 		return ret

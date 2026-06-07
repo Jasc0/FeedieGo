@@ -44,6 +44,9 @@ func parser(url string) *FeedieFeed{
 					pubtime = time.Now()
 					log.Printf("unable to parse date %s, %v\n", item.Published , err)
 				}
+			} else{
+				pubtime = time.Now()
+				log.Printf("unable to parse date %s, %v\n", item.Published , err)
 			}
 		}
 		entry.Published = int64(pubtime.Unix())
@@ -80,10 +83,6 @@ func parser(url string) *FeedieFeed{
 	}
 	parsedFeed := newFeed(feed.Title, url, items)
 	return parsedFeed
-	//for _, i := range items{
-	//	fmt.Printf("Title: %s\nAuthor: %s\npub: %d\nthumbnail: %s\nLinks: %v\n description: %s\n", i.Title, i.Author, i.Published, i.Thumbnail, i.Links, i.Description)
-	//}
-
 }
 
 func parseItunes(feedItem *gofeed.Item, feedFeed *gofeed.Feed, outItem *FeedieEntry){
@@ -95,13 +94,12 @@ func parseItunes(feedItem *gofeed.Item, feedFeed *gofeed.Feed, outItem *FeedieEn
 		if(len(outItem.Thumbnail) < len (itunes.Image)){
 			outItem.Thumbnail = itunes.Image
 		}
-		if(len(outItem.Thumbnail) < len (feedFeed.Image.URL)){
+		if(feedFeed.Image != nil && len(outItem.Thumbnail) < len (feedFeed.Image.URL)){
 			outItem.Thumbnail = feedFeed.Image.URL
 		}
-
 	}
-
 }
+
 func parseExtensions(feedItem *gofeed.Item, feedFeed *gofeed.Feed, outItem *FeedieEntry){
 	//media
 	if media, ok := feedItem.Extensions["media"]; ok {

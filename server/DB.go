@@ -354,9 +354,6 @@ func DBGetFeedByName(name string) FeedieFeed {
 	var title, url string
 	dbMu.RLock()
 	feedData := db.QueryRow(query, name)
-	if err != nil{
-		log.Fatal(err)
-	}
 	dbMu.RUnlock()
 	err := feedData.Scan(&title, &url)
 	if err != nil{
@@ -406,9 +403,6 @@ func DBGetFeeds(withEntries bool ) []FeedieFeed{
 	}
 	defer feeds.Close()
 	for feeds.Next() {
-		if err != nil{
-			log.Fatal(err)
-		}
 		var title, url string
 		err = feeds.Scan(&title, &url)
 		if err != nil{
@@ -416,7 +410,9 @@ func DBGetFeeds(withEntries bool ) []FeedieFeed{
 		}
 		feed := FeedieFeed{Title: title, Url: url}
 		if withEntries{
+			dbMu.RUnlock()
 			ents := DBGetByFeedTimeOrdered(feed, DESC, -1, 0);
+			dbMu.RLock()
 			feed.Entries = ents
 		}
 		ret = append(ret, feed)
@@ -434,9 +430,6 @@ func DBGetTags() []string{
 	}
 	defer feeds.Close()
 	for feeds.Next() {
-		if err != nil{
-			log.Fatal(err)
-		}
 		var tag string
 		err = feeds.Scan(&tag)
 		if err != nil{

@@ -156,20 +156,24 @@ func addFeedHandler (w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("serving /add_feed, url=%s\n", url)
-   addFeed(url)
+	if !addFeed(url){
+		http.Error(w, "unable to parse feed", http.StatusBadRequest)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	
 }
-func addFeed(url string){
+
+func addFeed(url string) bool{
 	feed := parser(url)
 	if feed == nil {
 		log.Printf("unable to parse feed: %s", url)
-		return
+		return false
 	}
 	DBAddFeedWithEntries(*feed)
+	return true
 }
 
 func delFeedHandler (w http.ResponseWriter, r *http.Request) {
