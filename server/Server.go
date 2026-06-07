@@ -18,6 +18,7 @@ func FeedieStartServer(port int){
 	http.HandleFunc("/del_tag", delTagHandler)
 	http.HandleFunc("/clear_members", clearTagHandler)
 	http.HandleFunc("/add_member", AddTagMemberHandler)
+	http.HandleFunc("/del_member", DelTagMemberHandler)
 	fmt.Printf("listening on :%d", port)
 	err := http.ListenAndServe(fmt.Sprintf(":%d",port), nil)
 	if err != nil{
@@ -256,6 +257,31 @@ func clearTagHandler (w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func DelTagMemberHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tagName := r.URL.Query().Get("tag_name")
+	feedURL := r.URL.Query().Get("feed_url")
+	if tagName == "" || feedURL == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		if tagName == "" {
+			log.Printf("error serving /del_member tag_name value empty")
+		}
+		if feedURL == "" {
+			log.Printf("error serving /del_member feed_url value empty")
+		}
+		return
+	}
+
+	log.Printf("serving /del_member, tag_name=%s feed_url=%s\n", tagName, feedURL)
+	DBDelMembership(tagName, feedURL)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
 func AddTagMemberHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

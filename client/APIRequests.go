@@ -168,6 +168,34 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 			return func(config FeedieConfig, params []string) error{
 				tag_name := params[0]
 				feeds := params[1:]
+				changes := getModTagChanges(config, tag_name, feeds)
+				
+				for _, c := range changes{
+					if c.add{
+						resp, err := http.Get(fmt.Sprintf("%s%s/add_member?tag_name=%s&feed_url=%s",
+						config.SERVER,config.PORT,url.QueryEscape(tag_name),url.QueryEscape(c.url))); if err != nil{
+							log.Println(err)
+							return err
+						}
+						defer resp.Body.Close()
+						if resp.StatusCode != http.StatusOK {
+							log.Println("Bad StatusCode", resp.StatusCode)
+							return fmt.Errorf("invalid tag: %s", tag_name)
+						}  
+					} else{
+						resp, err := http.Get(fmt.Sprintf("%s%s/del_member?tag_name=%s&feed_url=%s",
+						config.SERVER,config.PORT,url.QueryEscape(tag_name),url.QueryEscape(c.url))); if err != nil{
+							log.Println(err)
+							return err
+						}
+						defer resp.Body.Close()
+						if resp.StatusCode != http.StatusOK {
+							log.Println("Bad StatusCode", resp.StatusCode)
+							return fmt.Errorf("invalid tag: %s", tag_name)
+						}  
+					}
+				}
+			/*
 				resp, err := http.Get(fmt.Sprintf("%s%s/clear_members?tag_name=%s",
 					config.SERVER,config.PORT,url.QueryEscape(tag_name))); if err != nil{
 					log.Println(err)
@@ -194,6 +222,7 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 						return fmt.Errorf("invalid tag: %s", params[0])
 					}
 				} 
+			*/
 
 				return nil
 			}
@@ -205,6 +234,32 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 		return errors.New("invalid ActionType")
 	}
 }
+
+type modTagMemberChange struct{
+	add bool
+	url string
+}
+
+
+func getModTagChanges(config FeedieConfig, tag string, newMembers []string) []modTagMemberChange{
+	changes := []modTagMemberChange{}
+	curMembers := getModTagOptions(config, tag)
+	for _, cm := range curMembers{
+		if cm.pu_selected{
+			if !in(cm.Url, newMembers){
+				changes = append(changes, modTagMemberChange{add: false, url: cm.Url})
+			}
+		} else{
+			if in(cm.Url, newMembers){
+				changes = append(changes, modTagMemberChange{add: true, url: cm.Url})
+			}
+		}
+	}
+
+
+	return changes
+}
+
 
 func getSelectOptions(config FeedieConfig) []list_source {
 	ret := []list_source{}

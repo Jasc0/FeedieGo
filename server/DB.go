@@ -472,6 +472,19 @@ func DBClearMembersTag(tagName string) {
 		log.Fatal(err)
 	}
 }
+func DBDelMembership(tagName, feedURL string) {
+	dbMu.Lock()
+	defer dbMu.Unlock()
+	_, err = db.Exec(`DELETE FROM tag_members
+	WHERE tag_id IN (
+		SELECT id FROM tags WHERE name = ? LIMIT 1) 
+		AND feed_id IN (
+		SELECT id FROM feeds WHERE url = ? LIMIT 1);
+	`, tagName, feedURL)
+	if err != nil{
+		log.Fatal(err)
+	}
+}
 func DBAddMembership(tagName, feedURL string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
