@@ -18,7 +18,6 @@ const ASC = true
 type timeOrder bool
 
 var db *sql.DB
-var err error
 var dbMu sync.RWMutex
 func ensureParentDirs(filePath string) error {
     dir := filepath.Dir(filePath)
@@ -26,7 +25,7 @@ func ensureParentDirs(filePath string) error {
 }
 
 func DBInit(path string) {
-	err = ensureParentDirs(path)
+	err := ensureParentDirs(path)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -114,7 +113,7 @@ func GetHashString(root string) string{
 func DBExecuteSQL(statement string, args []any){
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(statement, args...)
+	_, err := db.Exec(statement, args...)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -130,7 +129,7 @@ ON CONFLICT(id) DO UPDATE SET
     title = excluded.title,
     url = excluded.url;
 `
-	_, err = db.Exec(statement, hash, feed.Title, feed.Url)
+	_, err := db.Exec(statement, hash, feed.Title, feed.Url)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -154,7 +153,7 @@ ON CONFLICT(id) DO UPDATE SET
 `
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(statement,entry_id,feed_id,entry.Title,entry.Author,entry.Published, entry.Description, entry.Thumbnail)
+	_, err := db.Exec(statement,entry_id,feed_id,entry.Title,entry.Author,entry.Published, entry.Description, entry.Thumbnail)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -230,7 +229,7 @@ func DBAddTag(tagName string) {
 
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(statement, tagID, tagName)
+	_, err := db.Exec(statement, tagID, tagName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -264,7 +263,7 @@ func DBAddFeedToTag(feed FeedieFeed, tag string) {
 
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(`INSERT INTO tag_members
+	_, err := db.Exec(`INSERT INTO tag_members
 	(tag_id, feed_id)
 	VALUES (?,?);`, tagID, feedID)
 	if err != nil {
@@ -443,7 +442,7 @@ func DBGetTags() []string{
 func DBDelTag(tag string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(`
+	_, err := db.Exec(`
 	DELETE FROM tags WHERE name = ?`, tag)
 	if err != nil{
 		log.Fatal(err)
@@ -454,7 +453,7 @@ func DBDelFeed(feedURL string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
 	id := GetHashString(feedURL)
-	_, err = db.Exec(`
+	_, err := db.Exec(`
 	DELETE FROM feeds WHERE id = ?`, id)
 	if err != nil{
 		log.Fatal(err)
@@ -463,7 +462,7 @@ func DBDelFeed(feedURL string) {
 func DBClearMembersTag(tagName string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(`DELETE FROM tag_members
+	_, err := db.Exec(`DELETE FROM tag_members
 	WHERE tag_id IN (
 		SELECT id FROM tags WHERE name = ?
 	);
@@ -475,7 +474,7 @@ func DBClearMembersTag(tagName string) {
 func DBDelMembership(tagName, feedURL string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(`DELETE FROM tag_members
+	_, err := db.Exec(`DELETE FROM tag_members
 	WHERE tag_id IN (
 		SELECT id FROM tags WHERE name = ? LIMIT 1) 
 		AND feed_id IN (
@@ -488,7 +487,7 @@ func DBDelMembership(tagName, feedURL string) {
 func DBAddMembership(tagName, feedURL string) {
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	_, err = db.Exec(`INSERT INTO tag_members (tag_id, feed_id)
+	_, err := db.Exec(`INSERT INTO tag_members (tag_id, feed_id)
 	VALUES (
 		(SELECT id FROM tags WHERE name = ? LIMIT 1),
 		(SELECT id FROM feeds WHERE url = ? LIMIT 1)

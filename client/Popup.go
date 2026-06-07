@@ -328,11 +328,11 @@ func (d FeediePopUpDelegate) Render(w io.Writer, m list.Model, index int, listIt
 	i, ok := listItem.(popUpListItem)
 	if ok {
 		bar := " "
-		selMark := "[ ]"
+		selMark := "[ ] "
 		title := i.Title()
 
 		if i.pu_selected {
-			selMark = "[*]"
+			selMark = "[*] "
 		}
 
 		if index == m.Index() {

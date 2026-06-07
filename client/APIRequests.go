@@ -195,35 +195,6 @@ func getActionFunc (at ActionType) func (FeedieConfig, []string) error {
 						}  
 					}
 				}
-			/*
-				resp, err := http.Get(fmt.Sprintf("%s%s/clear_members?tag_name=%s",
-					config.SERVER,config.PORT,url.QueryEscape(tag_name))); if err != nil{
-					log.Println(err)
-					return err
-				}
-				defer resp.Body.Close()
-
-				if resp.StatusCode != http.StatusOK{
-					log.Println("Bad StatusCode", resp.StatusCode)
-					return fmt.Errorf("invalid tag: %s", params[0])
-				}
-
-				for _, f := range feeds{
-
-					resp, err := http.Get(fmt.Sprintf("%s%s/add_member?tag_name=%s&feed_url=%s",
-					config.SERVER,config.PORT,url.QueryEscape(tag_name),url.QueryEscape(f))); if err != nil{
-						log.Println(err)
-						return err
-					}
-					defer resp.Body.Close()
-
-					if resp.StatusCode != http.StatusOK{
-						log.Println("Bad StatusCode", resp.StatusCode)
-						return fmt.Errorf("invalid tag: %s", params[0])
-					}
-				} 
-			*/
-
 				return nil
 			}
 
