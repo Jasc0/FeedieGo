@@ -42,11 +42,11 @@ func parser(url string) *FeedieFeed{
 					pubtime = pubtime.Add(24 * time.Hour)
 				} else{
 					pubtime = time.Now()
-					log.Printf("unable to parse date %s, %v\n", item.Published , err)
+					log.Printf("(%s) unable to parse date %s, %v\n", url, item.Published , err)
 				}
 			} else{
 				pubtime = time.Now()
-				log.Printf("unable to parse date %s, %v\n", item.Published , err)
+				log.Printf("(%s) unable to parse date %s, %v\n", url, item.Published , err)
 			}
 		}
 		entry.Published = int64(pubtime.Unix())
