@@ -12,6 +12,10 @@ import (
 
 const preloadAmt = 5
 
+type thumbnailReadyMsg struct {
+	url string
+}
+
 type entriesModel struct {
 	prevModel     tea.Model
 	config        FeedieConfig
@@ -127,7 +131,7 @@ func initialEntriesModel(src func(FeedieConfig, int) []list_entry, config Feedie
 }
 
 func (m entriesModel) preloadThumbnails(preload int) {
-	items := m.list.Items()
+	items := m.list.VisibleItems()
 	startIdx := max(0, m.list.Index()-preload/2)
 	endIdx := min(startIdx+preload, len(items))
 	urls := []string{}
@@ -206,6 +210,20 @@ func (m entriesModel) View() string {
 	return lipgloss.JoinHorizontal(lipgloss.Bottom, left, right)
 }
 
+func (m *entriesModel) SyncColumns() tea.Cmd {
+	m.vp.YOffset = 0
+	m.vp.SetXOffset(0)
+	selected := m.getSelectedEntry()
+	m.vp.SetContent(selected.FullDescription(m.vp.Width))
+	cmd := m.drawCurImage()
+	if selected.Thumbnail != "" {
+		m.vp.Height = getPaneHeight(m.height, 1-m.config.ThumbnailRatio)
+	} else {
+		m.vp.Height = getPaneHeight(m.height, 1)
+	}
+	return cmd
+}
+
 func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	selected := m.getSelectedEntry()
 	switch msg := msg.(type) {
@@ -223,53 +241,33 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		k := msg.String()
+		if m.list.FilterState() == list.Filtering {
+			newList, cmd := m.list.Update(msg)
+			m.list = newList
+			return m, cmd
+		}
 		if in(k, m.config.Keys["quit"]) {
-			if m.list.FilterState() != list.Filtering {
-				return m, tea.Quit
-			}
+			return m, tea.Quit
 		}
 		if in(k, m.config.Keys["changeFocus"]) {
 			m.listFocused = !m.listFocused
 			return m, nil
 		}
 		if in(k, m.config.Keys["cursorDown"]) {
-			if m.list.FilterState() != list.Filtering {
-				if m.listFocused {
-					m.vp.YOffset = 0
-					m.vp.SetXOffset(0)
-					m.list.CursorDown()
-					selected = m.getSelectedEntry()
-					m.vp.SetContent(selected.FullDescription(m.vp.Width))
-					m.drawCurImage()
-					if selected.Thumbnail != "" {
-						m.vp.Height = getPaneHeight(m.height, 1-m.config.ThumbnailRatio)
-					} else {
-						m.vp.Height = getPaneHeight(m.height, 1)
-					}
-					return m, m.paginationLogic()
-				} else {
-					m.vp.ScrollDown(1)
-				}
+			if m.listFocused {
+				m.list.CursorDown()
+				cmd := m.SyncColumns()
+				return m, tea.Batch(cmd, m.paginationLogic())
+			} else {
+				m.vp.ScrollDown(1)
 			}
 		}
 		if in(k, m.config.Keys["cursorUp"]) {
-			if m.list.FilterState() != list.Filtering {
-				if m.listFocused {
-					m.vp.YOffset = 0
-					m.vp.SetXOffset(0)
-					m.list.CursorUp()
-					selected = m.getSelectedEntry()
-					m.vp.SetContent(selected.FullDescription(m.vp.Width))
-					m.drawCurImage()
-					if selected.Thumbnail != "" {
-						m.vp.Height = getPaneHeight(m.height, 1-m.config.ThumbnailRatio)
-					} else {
-						m.vp.Height = getPaneHeight(m.height, 1)
-					}
-					return m, nil
-				} else {
-					m.vp.ScrollUp(1)
-				}
+			if m.listFocused {
+				m.list.CursorUp()
+				return m, m.SyncColumns()
+			} else {
+				m.vp.ScrollUp(1)
 			}
 		}
 		if in(k, m.config.Keys["filter"]) {
@@ -278,38 +276,28 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 		if in(k, m.config.Keys["feedMenu"]) {
-			if m.list.FilterState() != list.Filtering {
-				m.thumbnail.clear()
-				return m.prevModel, RefreshCmd("")
-			}
+			m.thumbnail.clear()
+			return m.prevModel, RefreshCmd("")
 		}
 		if in(k, m.config.Keys["openMenu"]) {
-			if m.list.FilterState() != list.Filtering {
-				m.thumbnail.clear()
-				return initialListPopupModel(m.config, m.config.getLinkOpener, selected.getLinks,
-					false, m, "Choose which link to open", []string{}, RefreshCmd), tea.WindowSize()
-			}
+			m.thumbnail.clear()
+			return initialListPopupModel(m.config, m.config.getLinkOpener, selected.getLinks,
+				false, m, "Choose which link to open", []string{}, RefreshCmd), tea.WindowSize()
 		}
 		if in(k, m.config.Keys["open"]) {
-			if m.list.FilterState() != list.Filtering {
-				if len(selected.Links) >= 1 {
-					defaultLink := selected.Links[0]
-					m.config.getLinkOpener(m.config, []string{defaultLink.URL, defaultLink.Type})
-				}
+			if len(selected.Links) >= 1 {
+				defaultLink := selected.Links[0]
+				m.config.getLinkOpener(m.config, []string{defaultLink.URL, defaultLink.Type})
 			}
 		}
 		if in(k, m.config.Keys["copyLink"]) {
-			if m.list.FilterState() != list.Filtering {
-				if len(selected.Links) >= 1 {
-					defaultLink := selected.Links[0]
-					m.config.getYanker(m.config, []string{defaultLink.URL})
-				}
+			if len(selected.Links) >= 1 {
+				defaultLink := selected.Links[0]
+				m.config.getYanker(m.config, []string{defaultLink.URL})
 			}
 		}
 		if in(k, m.config.Keys["refresh"]) {
-			if m.list.FilterState() != list.Filtering {
-				return m, RefreshCmd("")
-			}
+			return m, RefreshCmd("")
 		}
 		if in(k, m.config.Keys["help"]) {
 			if m.list.ShowHelp() {
@@ -322,12 +310,22 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.listFocused {
 			newList, cmd := m.list.Update(msg)
 			m.list = newList
-			return m, tea.Batch(cmd, m.paginationLogic())
+			syncCmd := m.SyncColumns()
+			return m, tea.Batch(cmd, syncCmd, m.paginationLogic())
 		} else {
 			newVP, cmd := m.vp.Update(msg)
 			m.vp = newVP
 			return m, cmd
 		}
+	case list.FilterMatchesMsg:
+		newList, cmd := m.list.Update(msg)
+		m.list = newList
+		return m, tea.Batch(cmd, m.SyncColumns())
+	case thumbnailReadyMsg:
+		if m.getSelectedEntry().Thumbnail == msg.url {
+			return m, m.drawCurImage()
+		}
+		return m, nil
 	case tea.MouseMsg:
 		if m.listFocused {
 			newList, cmd := m.list.Update(msg)
@@ -349,29 +347,42 @@ func (m entriesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	}
-	m.drawCurImage()
+	cmd := m.drawCurImage()
 	if selected.Thumbnail != "" {
 		m.vp.Height = getPaneHeight(m.height, 1-m.config.ThumbnailRatio)
 	} else {
 		m.vp.Height = getPaneHeight(m.height, 1)
 	}
-	return m, nil
+	return m, cmd
 }
 
-func (m entriesModel) drawCurImage() {
-	selected := m.getSelectedEntry()
-	if selected.Thumbnail != "" {
-		x := m.list.Width() + 3
-		y := 1
-		width := m.vp.Width
-		height := getPaneHeight(m.height, m.config.ThumbnailRatio)
-		if ok := m.thumbnail.drawImage(x, y, width, height, selected.Thumbnail); !ok {
-			m.vp.Height = getPaneHeight(m.height, 1)
-		}
-	} else {
-		m.thumbnail.clear()
-	}
+func (m *entriesModel) drawCurImage() tea.Cmd {
 	go m.preloadThumbnails(preloadAmt)
+	selected := m.getSelectedEntry()
+	if selected.Thumbnail == "" {
+		m.thumbnail.clear()
+		return nil
+	}
+	x := m.list.Width() + 3
+	y := 1
+	width := m.vp.Width
+	height := getPaneHeight(m.height, m.config.ThumbnailRatio)
+	if ok := m.thumbnail.drawImage(x, y, width, height, selected.Thumbnail); ok {
+		return nil
+	}
+	m.vp.Height = getPaneHeight(m.height, 1)
+	if !m.thumbnail.enabled || m.thumbnail.isCached(selected.Thumbnail) {
+		return nil
+	}
+	tm := m.thumbnail
+	url := selected.Thumbnail
+	return func() tea.Msg {
+		tm.preloadImages([]string{url})
+		if !tm.isCached(url) {
+			return nil
+		}
+		return thumbnailReadyMsg{url: url}
+	}
 }
 
 func (m *entriesModel) paginationLogic() tea.Cmd {

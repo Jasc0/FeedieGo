@@ -92,29 +92,31 @@ func (tm thumbnailManager) preloadImages(urls []string){
 	}
 }
 
+func (tm thumbnailManager) isCached(url string) bool{
+	ImageMapMutex.Lock()
+	defer ImageMapMutex.Unlock()
+	_, ok := tm.urlToPath[url]
+	return ok
+}
+
 func (tm thumbnailManager) drawImage (x, y, width, height int, url string) bool{
 	if !tm.enabled{
 		return false
 	}
-	// download thumbnail and store it in map
+	// only draw images already on disk; downloads happen asynchronously via preloadImages
 	ImageMapMutex.Lock()
 	path, ok := tm.urlToPath[url]
 	ImageMapMutex.Unlock()
 	if !ok{
 		desiredPath := fmt.Sprintf("%s/%s",tm.directory,GetHashString(url))
 		_, err := os.Stat(desiredPath)
-		if err == nil {
-			ImageMapMutex.Lock()
-			tm.urlToPath[url] = desiredPath
-			ImageMapMutex.Unlock()
-		} else{
-			if downloadFile(url,desiredPath){
-				ImageMapMutex.Lock()
-				tm.urlToPath[url] = desiredPath
-				ImageMapMutex.Unlock()
-				path = desiredPath
-			}
+		if err != nil {
+			return false
 		}
+		ImageMapMutex.Lock()
+		tm.urlToPath[url] = desiredPath
+		ImageMapMutex.Unlock()
+		path = desiredPath
 	}
 	if path == "" {return false}
 
