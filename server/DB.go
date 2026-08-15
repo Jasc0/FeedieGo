@@ -31,15 +31,7 @@ func DBInit(path string) {
 	}
 	dbMu.Lock()
 	defer dbMu.Unlock()
-	db, err = sql.Open("sqlite", fmt.Sprintf("file:%s",path))
-	if err != nil{
-		log.Fatal(err)
-	}
-	_, err = db.Exec(`PRAGMA foreign_keys = ON`)
-	if err != nil{
-		log.Fatal(err)
-	}
-	_, err = db.Exec(`PRAGMA journal_mode=WAL`)
+	db, err = sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)",path))
 	if err != nil{
 		log.Fatal(err)
 	}
