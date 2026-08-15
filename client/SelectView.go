@@ -297,6 +297,7 @@ func (m *selectModel) Refresh(msg FeedieMsg) tea.Cmd {
 	}
 	m.list.Select(index)
 
+	m.preloadFeeds(preloadAmt)
 	return tea.Batch(cmd, tea.WindowSize())
 }
 

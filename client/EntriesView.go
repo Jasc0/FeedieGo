@@ -155,6 +155,11 @@ func (m entriesModel) Refresh() (entriesModel, tea.Cmd) {
 		}
 	}
 	cmd := m.list.SetItems(entries)
+
+	if pm, ok := m.prevModel.(selectModel); ok {
+		pm.clearPreload()
+	}
+
 	return m, cmd
 }
 
