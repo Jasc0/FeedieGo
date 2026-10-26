@@ -391,6 +391,10 @@ func (m *entriesModel) drawCurImage() tea.Cmd {
 }
 
 func (m *entriesModel) paginationLogic() tea.Cmd {
+	//Stop pagination from occurring on filtered pages
+	if m.list.IsFiltered(){
+		return nil
+	}
 	if m.list.Paginator.OnLastPage() {
 		current := m.list.Items()
 		nextPage := m.src(m.config, m.maxPageOffset+1)
